@@ -1,0 +1,263 @@
+.batca-root {
+  --rice-paper: #f5ecd7;
+  --paper-warm: #efe3c4;
+  --ink-dark: #2a2418;
+  --mascot-yellow: #f0b840;
+  --orange-cta: #e87432;
+  --orange-cta-edge: #b85a22;
+  --bamboo-green: #6b8e3d;
+  --leaf-deep: #4c6630;
+  --bamboo-soft: #c8d68a;
+  --earth-brown: #8e4e22;
+  --pencil-gray: #8a7d65;
+  --cream-card: #fdf6ea;
+  --alert-red: #c23838;
+
+  font-family: "Be Vietnam Pro", sans-serif;
+  color: var(--ink-dark);
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 0%, #fbf4e2 0%, var(--rice-paper) 55%, var(--paper-warm) 100%);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.batca-frame {
+  position: relative;
+  width: min(100%, 460px);
+  height: 100%;
+  max-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batca-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batca-canvas {
+  touch-action: none;
+  border-radius: 18px;
+  box-shadow: 0 14px 40px rgba(42, 36, 24, 0.18);
+  background: var(--rice-paper);
+}
+
+/* ---- overlay chung ---- */
+.batca-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 5;
+}
+.batca-overlay > * { pointer-events: auto; }
+
+/* ---- HUD ---- */
+.batca-hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  z-index: 6;
+}
+.batca-hud-pill {
+  background: rgba(253, 246, 234, 0.9);
+  backdrop-filter: blur(6px);
+  border: 1.5px solid rgba(138, 125, 101, 0.3);
+  border-radius: 14px;
+  padding: 6px 12px;
+  box-shadow: 0 4px 12px rgba(42, 36, 24, 0.12);
+  line-height: 1.2;
+}
+.batca-hud-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--pencil-gray);
+}
+.batca-hud-value { font-size: 18px; font-weight: 800; }
+.batca-hud-value.money { color: var(--orange-cta); }
+
+.batca-depthbar {
+  position: absolute;
+  left: 16px; top: 92px; bottom: 90px;
+  width: 8px;
+  background: rgba(42, 36, 24, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 6;
+}
+.batca-depthbar-fill {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  background: linear-gradient(180deg, #7fb4c4, #2f6f86);
+  border-radius: 999px;
+}
+
+.batca-hint {
+  position: absolute;
+  bottom: 90px; left: 0; right: 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(253, 246, 234, 0.95);
+  text-shadow: 0 1px 4px rgba(42, 36, 24, 0.6);
+  z-index: 6;
+  animation: batcaPulse 1.6s ease-in-out infinite;
+}
+@keyframes batcaPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+.batca-bottombar {
+  position: absolute;
+  bottom: 16px; left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 6;
+}
+
+/* ---- buttons ---- */
+.batca-btn {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 14px 30px;
+  min-height: 48px;
+  transition: box-shadow .15s ease, transform .05s ease;
+}
+.batca-btn:active { transform: translateY(1px); }
+.batca-btn-primary {
+  background: linear-gradient(180deg, #f08a48 0%, var(--orange-cta) 100%);
+  border: 3px solid var(--orange-cta-edge);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(232, 116, 50, 0.4);
+}
+.batca-btn-primary:hover { box-shadow: 0 14px 32px rgba(232, 116, 50, 0.55); }
+.batca-btn-ghost {
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px solid var(--pencil-gray);
+  color: var(--ink-dark);
+}
+.batca-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+/* ---- modal / panel ---- */
+.batca-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(42, 36, 24, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+  animation: batcaFade .2s ease;
+}
+@keyframes batcaFade { from{opacity:0} to{opacity:1} }
+.batca-card {
+  background: var(--cream-card);
+  border-radius: 24px;
+  padding: 26px 22px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 18px 50px rgba(42, 36, 24, 0.3);
+  text-align: center;
+}
+.batca-card h2 { font-size: 24px; font-weight: 800; margin: 0 0 4px; }
+.batca-card p { font-size: 14px; color: #4a4232; line-height: 1.6; margin: 0; }
+
+/* logo bubble */
+.batca-logo {
+  width: 64px; height: 64px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 30%, #f8c860, #d99820);
+  border: 2px solid var(--ink-dark);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; font-weight: 800; color: #fff;
+  margin: 0 auto 14px;
+  box-shadow: 0 8px 20px rgba(217, 152, 32, 0.4);
+}
+
+.batca-instr {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1.5px dashed rgba(138, 125, 101, 0.4);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 18px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #4a4232;
+}
+
+/* upgrade rows */
+.batca-money-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--mascot-yellow);
+  color: var(--ink-dark);
+  font-weight: 800; font-size: 16px;
+  padding: 6px 16px; border-radius: 999px;
+  border: 2px solid var(--orange-cta-edge);
+  margin: 6px 0 16px;
+}
+.batca-upg-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.batca-upg {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff;
+  border: 1.5px solid rgba(138, 125, 101, 0.3);
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.batca-upg-icon {
+  width: 40px; height: 40px; flex: none;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bamboo-soft); color: var(--leaf-deep);
+}
+.batca-upg-body { flex: 1; min-width: 0; }
+.batca-upg-name { font-weight: 800; font-size: 14px; }
+.batca-upg-dots { display: flex; gap: 4px; margin-top: 4px; }
+.batca-dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(138,125,101,.3); }
+.batca-dot.on { background: var(--bamboo-green); }
+.batca-upg-buy {
+  flex: none;
+  border: 2px solid var(--orange-cta-edge);
+  background: linear-gradient(180deg, #f08a48, var(--orange-cta));
+  color: #fff; font-weight: 800; font-size: 13px;
+  border-radius: 999px; padding: 8px 14px; min-height: 44px;
+  cursor: pointer; white-space: nowrap;
+}
+.batca-upg-buy:disabled { opacity: .4; cursor: not-allowed; }
+.batca-upg-buy.maxed { background: var(--bamboo-green); border-color: var(--leaf-deep); }
+
+.batca-result-list {
+  text-align: left; margin: 14px 0;
+  max-height: 180px; overflow-y: auto;
+}
+.batca-result-row {
+  display: flex; justify-content: space-between;
+  font-size: 14px; padding: 6px 0;
+  border-bottom: 1px dashed rgba(138,125,101,.25);
+}
+.batca-result-row.bad { color: var(--alert-red); }
+.batca-earned { font-size: 32px; font-weight: 800; color: var(--orange-cta); }
+.batca-row-btns { display: flex; gap: 10px; }
+.batca-row-btns .batca-btn { flex: 1; padding: 14px 12px; font-size: 15px; }

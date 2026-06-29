@@ -1,0 +1,591 @@
+Đúng, hiểu ý m: **không cần prompt phân tích nữa**, mà cần prompt để ném cho AI/code agent **code full project playable luôn**.
+
+Với file reference m gửi, hướng **fishing mobile** có cơ sở vì `Tiny Fishing` volume 165,000 PC/Mobile và `Happy Fishing` cũng PC/Mobile, nên “Bắt Cá Ao Làng” hợp để làm một game hoàn chỉnh mobile-first. 
+
+Dùng prompt này:
+
+```txt id="full_project_prompt_bat_ca_ao_lang"
+Bạn là Senior Frontend Game Developer chuyên React + TypeScript + PixiJS.
+
+Nhiệm vụ:
+Code FULL PROJECT / FULL PLAYABLE MVP cho một mini game web/mobile tên “Bắt Cá Ao Làng”.
+
+Đây không phải task phân tích. Hãy trực tiếp kiểm tra project hiện tại, tạo/sửa file cần thiết, implement game chạy được, build được. Không hỏi lại nếu thiếu chi tiết; hãy tự chọn mặc định hợp lý và báo lại quyết định.
+
+==================================================
+0. BỐI CẢNH PROJECT
+==================================================
+
+Project dùng:
+- React
+- TypeScript
+- Vite nếu project hiện tại là Vite
+- PixiJS cho render game
+- React cho UI overlay
+- Không backend
+- Không physics engine
+- Không Redux
+- Không ECS phức tạp
+- localStorage để lưu best score / best money / upgrade nếu cần
+
+Nếu repo hiện tại đã có app shell hoặc routing:
+- Tích hợp game vào project hiện có.
+- Không phá game cũ.
+- Không xóa code không liên quan.
+- Tạo feature riêng trong src/features/bat-ca-ao-lang/.
+
+Nếu repo chưa có cấu trúc rõ:
+- Tạo một entry đơn giản để chạy game.
+- Giữ code nhỏ, dễ đọc.
+
+==================================================
+1. GAME CẦN CODE
+==================================================
+
+Tên game: “Bắt Cá Ao Làng”
+
+Màn hình: mobile-first portrait 9:16.
+
+Theme:
+Ao làng Việt Nam, ao sen, cầu tre, bèo nước, cá rô, cá chép, cua đồng, tôm, nắng chiều, cute casual, màu nước / giấy dó.
+
+Core gameplay:
+Người chơi thả lưới/cần câu xuống ao để bắt cá.
+
+Luồng chơi:
+1. Người chơi bấm giữ / tap hold để thả lưới xuống.
+2. Lưới đi xuống theo chiều dọc.
+3. Khi người chơi thả tay hoặc lưới đạt maxDepth, lưới bắt đầu kéo lên.
+4. Trong lúc kéo lên, nếu lưới chạm cá thì bắt cá.
+5. Cá bị bắt được thêm vào giỏ/inventory.
+6. Khi lưới lên mặt nước, bán toàn bộ cá, cộng tiền.
+7. Tiền dùng để nâng cấp:
+   - maxDepth
+   - netSize
+   - pullSpeed
+   - capacity
+8. Người chơi tiếp tục vòng lặp để bắt cá sâu hơn, nhiều tiền hơn.
+
+Game không cần backend. Game phải playable.
+
+==================================================
+2. MVP FEATURE BẮT BUỘC
+==================================================
+
+Phải implement đầy đủ:
+
+A. Screen flow
+- Start screen
+- Gameplay screen
+- Upgrade panel
+- Game over / session summary hoặc simple result panel
+- Replay / Continue button
+
+B. PixiJS scene
+- Background ao nước
+- Mặt nước / tầng nước
+- Lưới hoặc móc câu
+- Cá bơi ngang
+- Rác / vật cản nhẹ
+- Popup tiền
+- Simple particle/ripple nếu dễ làm
+
+C. Input mobile-first
+- Pointer down: bắt đầu thả lưới
+- Pointer up: kéo lưới lên
+- Desktop fallback: click/hold chuột
+- Không dùng keyboard làm input chính
+
+D. Fishing mechanic
+- Net states:
+  - idle
+  - dropping
+  - pulling
+  - selling/result
+- Net có:
+  - x
+  - y
+  - radius/size
+  - caughtFish[]
+- Khi dropping: lưới đi xuống.
+- Khi pulling: lưới đi lên.
+- Chỉ bắt cá khi pulling.
+- Khi net chạm cá và còn capacity thì catch.
+- Cá bị catch thì biến mất khỏi ao và nằm trong inventory của lượt kéo.
+
+E. Fish system
+Tạo ít nhất 8 loại entity:
+- Cá lòng tong
+- Cá rô
+- Tôm
+- Cua đồng
+- Cá trê
+- Cá chép
+- Cá lóc
+- Cá chép vàng
+- Rác / dép cũ / cành cây là bad item
+
+Mỗi fish/item có:
+- id
+- type
+- name
+- value
+- depthMin
+- depthMax
+- speed
+- size
+- rarity
+- isBad
+- requiredNetLevel optional
+
+F. Economy
+- Mỗi cá có value.
+- Sau mỗi lượt kéo lên, bán cá lấy tiền.
+- Bad item cho ít tiền hoặc trừ nhẹ điểm/capacity.
+- Hiện money popup.
+- Lưu bestMoney vào localStorage.
+
+G. Upgrade system
+Phải có ít nhất 4 upgrade:
+1. Depth
+   - tăng maxDepth
+2. Net Size
+   - tăng bán kính bắt cá
+3. Pull Speed
+   - kéo lưới nhanh hơn
+4. Capacity
+   - bắt được nhiều cá hơn mỗi lượt
+
+Mỗi upgrade có:
+- level
+- cost
+- maxLevel
+- effect
+
+Upgrade panel phải:
+- hiện level
+- hiện cost
+- disable nếu thiếu tiền hoặc max level
+- mua được upgrade
+- update stat ngay lập tức
+
+H. Difficulty / progression
+- Càng xuống sâu cá càng giá trị hơn.
+- Cá sâu bơi nhanh hơn.
+- Cá hiếm xuất hiện ít hơn.
+- Rác xuất hiện để chiếm capacity.
+- Người chơi phải nâng depth để gặp cá tốt hơn.
+
+I. UI overlay bằng React
+Gameplay HUD:
+- Money
+- Best money
+- Current depth
+- Max depth
+- Capacity current/max
+- Last catch value
+- Upgrade button
+- Pause/restart optional
+
+Start screen:
+- Title
+- Play button
+- Short instruction
+
+Upgrade panel:
+- 4 upgrade buttons
+- Money display
+- Continue button
+
+Result popup after pull:
+- Fish caught count
+- Money earned
+- Bad items caught if any
+
+J. Mobile optimization
+- Portrait layout.
+- Canvas responsive.
+- Use PixiJS object pooling or at least avoid creating/destroying too many sprites per frame.
+- No expensive filters.
+- No physics engine.
+- Hitbox dùng circle/rectangle simple.
+- Clamp delta time.
+- Texture/graphics placeholder acceptable.
+
+==================================================
+3. VISUAL YÊU CẦU
+==================================================
+
+Không cần asset ngoài. Nếu chưa có sprite:
+- Dùng Pixi Graphics placeholder đẹp, có màu sắc rõ.
+- Cá là ellipse/circle có đuôi tam giác.
+- Nước là gradient/shape nhiều tầng.
+- Sen/bèo là shape trang trí.
+- Lưới là circle/arc hoặc basket shape.
+- UI dùng CSS đẹp, warm, rice-paper style.
+
+Style:
+- nền giấy dó / màu nước
+- màu xanh ao, vàng nắng, nâu tre
+- bo góc, soft shadow trong CSS
+- mobile friendly
+
+Không được để UI quá thô nếu có thể polish nhẹ.
+
+==================================================
+4. KIẾN TRÚC FILE/FOLDER
+==================================================
+
+Tạo feature:
+
+src/features/bat-ca-ao-lang/
+  BatCaAoLangPage.tsx
+  BatCaPixiCanvas.tsx
+
+  game/
+    types.ts
+    constants.ts
+    fishConfig.ts
+    upgrades.ts
+    createInitialState.ts
+    updateGame.ts
+    fishingSystem.ts
+    fishSystem.ts
+    economySystem.ts
+    upgradeSystem.ts
+    storage.ts
+    math.ts
+
+  render/
+    usePixiApp.ts
+    createScene.ts
+    renderBackground.ts
+    renderFish.ts
+    renderNet.ts
+    renderEffects.ts
+    syncPixiScene.ts
+
+  ui/
+    StartScreen.tsx
+    GameplayHud.tsx
+    UpgradePanel.tsx
+    CatchResultPanel.tsx
+    GameButton.tsx
+
+  hooks/
+    useBatCaGame.ts
+    usePointerFishingInput.ts
+
+  styles/
+    batCaAoLang.css
+
+Nếu project hiện tại có convention khác thì vẫn giữ spirit trên, nhưng không over-engineering.
+
+==================================================
+5. TYPE SCRIPT DATA MODEL
+==================================================
+
+Implement types rõ ràng:
+
+GameMode:
+- start
+- playing
+- upgrade
+- result
+- paused
+
+NetState:
+- idle
+- dropping
+- pulling
+- returning
+
+FishState:
+- id
+- type
+- name
+- x
+- y
+- vx
+- size
+- value
+- depthMin
+- depthMax
+- rarity
+- isBad
+- caught
+- active
+
+PlayerStats:
+- money
+- bestMoney
+- maxDepth
+- netSize
+- pullSpeed
+- dropSpeed
+- capacity
+- currentCatch
+- upgrades
+
+GameState:
+- mode
+- elapsed
+- sessionEarned
+- lastCatchValue
+- waterDepth
+- net
+- fish
+- stats
+- feedbackTexts
+
+UpgradeState:
+- depthLevel
+- netSizeLevel
+- pullSpeedLevel
+- capacityLevel
+
+==================================================
+6. CORE LOGIC BẮT BUỘC
+==================================================
+
+Implement các function chính:
+
+1. createInitialState()
+- load localStorage
+- set money/bestMoney
+- set default upgrades
+- spawn fish
+
+2. updateGame(state, input, dt)
+- update net state
+- update fish movement
+- check collision when pulling
+- update feedback
+- handle result when net reaches top
+
+3. startDrop()
+- if net idle, chuyển sang dropping
+
+4. startPull()
+- nếu đang dropping thì chuyển sang pulling
+
+5. updateNet()
+- dropping: y += dropSpeed * dt
+- nếu đạt maxDepth thì pulling
+- pulling: y -= pullSpeed * dt
+- nếu về mặt nước thì sellCatch
+
+6. checkFishCollision()
+- chỉ khi pulling
+- distance(net, fish) <= netSize + fish.size
+- nếu capacity còn thì catch
+- set fish.caught = true
+- push vào currentCatch
+
+7. sellCatch()
+- total = sum value
+- bad item có thể value thấp hoặc penalty nhẹ
+- money += total
+- sessionEarned += total
+- lastCatchValue = total
+- clear currentCatch
+- save bestMoney
+- open result/upgrade UI
+
+8. buyUpgrade(type)
+- check đủ tiền
+- check maxLevel
+- trừ tiền
+- tăng level
+- apply stat
+- save
+
+9. spawnFish()
+- spawn theo depth tier
+- cá gần mặt nước rẻ
+- cá sâu đắt
+- cá hiếm ít
+- respawn nếu số lượng thấp
+
+==================================================
+7. BALANCING DEFAULT
+==================================================
+
+Dùng thông số mặc định:
+
+Base viewport:
+- logicalWidth = 390
+- logicalHeight = 844
+
+Water:
+- surfaceY = 150
+- bottomY = 820
+
+Initial stats:
+- money = 0
+- maxDepth = 320
+- netSize = 22
+- dropSpeed = 240
+- pullSpeed = 220
+- capacity = 3
+
+Upgrade cost:
+Depth:
+- level 1 cost 80, +120 depth
+- level 2 cost 180
+- level 3 cost 360
+- max 5
+
+Net Size:
+- level 1 cost 100, +6 radius
+- level 2 cost 220
+- level 3 cost 420
+- max 5
+
+Pull Speed:
+- level 1 cost 90, +45 speed
+- level 2 cost 200
+- level 3 cost 380
+- max 5
+
+Capacity:
+- level 1 cost 120, +1 slot
+- level 2 cost 260
+- level 3 cost 500
+- max 5
+
+Fish examples:
+- Cá lòng tong: value 10, shallow, common, slow
+- Cá rô: value 18, shallow/mid
+- Tôm: value 22, shallow/mid
+- Cua đồng: value 30, mid, slower, bigger
+- Cá trê: value 45, mid/deep
+- Cá chép: value 70, deep
+- Cá lóc: value 95, deep, fast
+- Cá chép vàng: value 160, rare, deep
+- Dép cũ/rác: value 0 hoặc -5, bad, common mid
+
+==================================================
+8. RESPONSIVE / MOBILE UX
+==================================================
+
+Phải đảm bảo:
+- Game chạy tốt trên mobile portrait.
+- Canvas fit chiều ngang màn hình.
+- UI overlay không che input chính.
+- Button đủ lớn >= 44px.
+- Không cần zoom.
+- touch-action: none cho game area.
+- Prevent scroll khi đang chơi.
+- Có fallback desktop.
+
+==================================================
+9. INTEGRATION
+==================================================
+
+Nếu project có App.tsx:
+- Thêm route/screen để mở BatCaAoLangPage.
+- Nếu chưa có router, thêm nút hoặc direct render để vào game.
+- Không phá flow cũ.
+- Nếu có dashboard game list, thêm card “Bắt Cá Ao Làng”.
+
+Nếu project chưa có CSS global phù hợp:
+- Import batCaAoLang.css trong page hoặc app.
+
+==================================================
+10. ACCEPTANCE CRITERIA
+==================================================
+
+Sau khi code xong, game phải đạt:
+
+1. npm install không lỗi nếu cần.
+2. npm run build pass.
+3. npm test pass nếu repo có test.
+4. Mở app thấy được Start Screen.
+5. Bấm Play vào game.
+6. Hold/click giữ để thả lưới xuống.
+7. Release để kéo lưới lên.
+8. Lưới chạm cá khi kéo lên thì bắt được.
+9. Lên mặt nước thì bán cá và cộng tiền.
+10. Mua upgrade được nếu đủ tiền.
+11. Upgrade ảnh hưởng thật tới gameplay.
+12. bestMoney lưu localStorage.
+13. Không có memory leak rõ ràng khi rời màn.
+14. Không tạo/destroy Pixi app liên tục mỗi render React.
+15. Mobile portrait dùng được.
+
+==================================================
+11. KHÔNG LÀM Ở VERSION NÀY
+==================================================
+
+Không làm:
+- Backend
+- Login
+- Leaderboard online
+- Ads
+- Daily challenge
+- Gacha
+- Shop skin phức tạp
+- Asset pipeline phức tạp
+- Physics engine
+- Multiplayer
+- Tilemap editor
+- ECS
+- Redux/Zustand nếu không cần
+- Audio phức tạp nếu tốn thời gian
+
+Có thể thêm sound đơn giản nếu project đã có setup dễ, nhưng không bắt buộc.
+
+==================================================
+12. CÁCH LÀM VIỆC
+==================================================
+
+Hãy thực hiện theo thứ tự:
+
+Phase 1:
+- Inspect project structure.
+- Xác định React/Vite/Pixi version.
+- Tạo feature folder.
+- Tạo types/constants/state.
+
+Phase 2:
+- Tạo page + Pixi canvas.
+- Render background, fish, net.
+- Implement game loop.
+
+Phase 3:
+- Implement input hold/release.
+- Implement drop/pull/collision/catch/sell.
+
+Phase 4:
+- Implement UI: Start, HUD, Upgrade, Result.
+
+Phase 5:
+- Polish visual placeholder.
+- Add localStorage.
+- Add responsive mobile CSS.
+
+Phase 6:
+- Run build/test.
+- Fix all TypeScript/build/runtime errors.
+
+Quan trọng:
+- Đừng dừng ở phân tích.
+- Đừng chỉ tạo skeleton.
+- Phải code playable MVP hoàn chỉnh.
+- Nếu gặp lỗi, tự sửa.
+- Cuối cùng báo cáo:
+  a. File đã tạo/sửa
+  b. Cách chơi
+  c. Cách chạy
+  d. Build/test result
+  e. Những gì đã cố tình chưa làm
+```
+
+Nếu m ném cho model yếu/free, thêm đoạn này ở cuối để nó không làm lan man:
+
+```txt id="anti_overengineering_addon"
+Ưu tiên playable trước, đẹp sau. Nếu thiếu asset thì dùng Pixi Graphics placeholder. Không refactor toàn app. Không động vào game cũ. Không tạo hệ thống tổng quát cho nhiều game. Chỉ làm riêng feature “Bắt Cá Ao Làng” chạy được.
+```
+
+Cái này là prompt **code full playable MVP**, không phải prompt GDD nữa.
