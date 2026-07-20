@@ -16,9 +16,9 @@ const C = {
   yellow: "#f0b840",
 };
 
-let bgCache: { w: number; h: number; depthZone: number; canvas: HTMLCanvasElement } | null = null;
+let bgCache: { w: number; h: number; canvas: HTMLCanvasElement } | null = null;
 
-function buildBackground(w: number, h: number, depthZone: number) {
+function buildBackground(w: number, h: number) {
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
   const ctx = cv.getContext("2d")!;
@@ -58,34 +58,12 @@ function buildBackground(w: number, h: number, depthZone: number) {
     ctx.beginPath(); ctx.moveTo(x2, SURFACE_Y); ctx.lineTo(x2 + 4, 50); ctx.stroke();
   }
 
-  // Nước nhiều tầng theo zone sâu
+  // Nước nhiều tầng (đậm dần theo độ sâu)
   const water = ctx.createLinearGradient(0, SURFACE_Y, 0, BOTTOM_Y);
-  if (depthZone === 0) {
-    water.addColorStop(0, "#7fb4c4");
-    water.addColorStop(0.35, "#4f93a8");
-    water.addColorStop(0.7, "#2f6f86");
-    water.addColorStop(1, "#1d4d5e");
-  } else if (depthZone === 1) {
-    water.addColorStop(0, "#4f93a8");
-    water.addColorStop(0.4, "#2f6f86");
-    water.addColorStop(0.8, "#1a4a5c");
-    water.addColorStop(1, "#0f3544");
-  } else if (depthZone === 2) {
-    water.addColorStop(0, "#2f6f86");
-    water.addColorStop(0.4, "#1d4d5e");
-    water.addColorStop(0.8, "#0f3544");
-    water.addColorStop(1, "#082630");
-  } else if (depthZone === 3) {
-    water.addColorStop(0, "#1d4d5e");
-    water.addColorStop(0.5, "#0f3544");
-    water.addColorStop(0.9, "#062029");
-    water.addColorStop(1, "#021015");
-  } else if (depthZone === 4) {
-    water.addColorStop(0, "#0f3544");
-    water.addColorStop(0.5, "#082630");
-    water.addColorStop(0.9, "#021015");
-    water.addColorStop(1, "#000508");
-  }
+  water.addColorStop(0, "#7fb4c4");
+  water.addColorStop(0.35, "#4f93a8");
+  water.addColorStop(0.7, "#2f6f86");
+  water.addColorStop(1, "#1d4d5e");
   ctx.fillStyle = water;
   ctx.fillRect(0, SURFACE_Y, w, BOTTOM_Y - SURFACE_Y);
 
@@ -99,27 +77,19 @@ function buildBackground(w: number, h: number, depthZone: number) {
     ctx.closePath(); ctx.fill();
   }
 
-  // Đáy bùn / hiệu ứng vực sâu
-  if (depthZone >= 3) {
-    const floor = ctx.createLinearGradient(0, BOTTOM_Y - 40, 0, BOTTOM_Y);
-    floor.addColorStop(0, "rgba(8,26,32,0)");
-    floor.addColorStop(1, "#000508");
-    ctx.fillStyle = floor;
-    ctx.fillRect(0, BOTTOM_Y - 40, w, 40);
-  } else {
-    ctx.fillStyle = "#163b48";
-    ctx.beginPath();
-    ctx.moveTo(0, BOTTOM_Y);
-    ctx.quadraticCurveTo(w * 0.5, BOTTOM_Y - 18, w, BOTTOM_Y);
-    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
-  }
+  // Đáy bùn
+  ctx.fillStyle = "#163b48";
+  ctx.beginPath();
+  ctx.moveTo(0, BOTTOM_Y);
+  ctx.quadraticCurveTo(w * 0.5, BOTTOM_Y - 18, w, BOTTOM_Y);
+  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
 
   // Lá sen + bèo trên mặt nước
   drawLotus(ctx, 70, SURFACE_Y, 34);
   drawLotus(ctx, w - 64, SURFACE_Y, 28);
   drawLotus(ctx, w * 0.5, SURFACE_Y, 22);
 
-  bgCache = { w, h, depthZone, canvas: cv };
+  bgCache = { w, h, canvas: cv };
   return cv;
 }
 
@@ -246,11 +216,7 @@ function drawNet(ctx: CanvasRenderingContext2D, g: Game) {
 
 export function renderScene(ctx: CanvasRenderingContext2D, g: Game) {
   const w = LOGICAL_WIDTH, h = LOGICAL_HEIGHT;
-  const depthMeters = Math.round(g.stats.maxDepth - SURFACE_Y);
-  const depthZone = Math.min(4, Math.floor(depthMeters / 1000));
-  const bg = bgCache && bgCache.w === w && bgCache.h === h && bgCache.depthZone === depthZone
-    ? bgCache.canvas
-    : buildBackground(w, h, depthZone);
+  const bg = bgCache && bgCache.w === w && bgCache.h === h ? bgCache.canvas : buildBackground(w, h);
   ctx.drawImage(bg, 0, 0);
 
   // Gợn nước mặt
@@ -261,16 +227,6 @@ export function renderScene(ctx: CanvasRenderingContext2D, g: Game) {
     if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
   }
   ctx.stroke();
-
-  // Hiển thị tên zone + mét
-  ctx.textAlign = "right";
-  ctx.font = "700 11px 'Be Vietnam Pro', sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.fillText(getDepthZoneName(depthMeters), w - 12, SURFACE_Y + 18);
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "600 10px 'Be Vietnam Pro', sans-serif";
-  ctx.fillText(depthMeters + "m", w - 12, SURFACE_Y + 32);
-  ctx.textAlign = "center";
 
   for (const f of g.fish) drawFish(ctx, f);
   drawNet(ctx, g);
@@ -295,12 +251,4 @@ export function renderScene(ctx: CanvasRenderingContext2D, g: Game) {
     ctx.fillText(t.text, t.x, t.y);
   }
   ctx.globalAlpha = 1;
-}
-
-export function getDepthZoneName(meters: number): string {
-  if (meters < 1000) return "Mặt nước";
-  if (meters < 2000) return "Biển khơi";
-  if (meters < 3000) return "Vực sâu";
-  if (meters < 4000) return "Vực Mariana";
-  return "Đáy đại dương";
 }

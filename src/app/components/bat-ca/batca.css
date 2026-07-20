@@ -17,6 +17,8 @@
   color: var(--ink-dark);
   width: 100%;
   height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   display: flex;
   align-items: center;
@@ -30,12 +32,24 @@
 
 .batca-frame {
   position: relative;
-  width: min(100%, 460px);
+  width: 100%;
   height: 100%;
-  max-height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .batca-frame {
+    width: min(90vw, 580px);
+    height: min(90vh, 800px);
+    min-height: auto;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(42, 36, 24, 0.25);
+    overflow: hidden;
+  }
 }
 
 .batca-stage {
@@ -68,7 +82,8 @@
 .batca-hud {
   position: absolute;
   top: 0; left: 0; right: 0;
-  padding: 14px 16px;
+  padding: 12px 14px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -76,28 +91,43 @@
   z-index: 6;
 }
 .batca-hud-pill {
-  background: rgba(253, 246, 234, 0.9);
-  backdrop-filter: blur(6px);
+  background: rgba(253, 246, 234, 0.92);
+  backdrop-filter: blur(8px);
   border: 1.5px solid rgba(138, 125, 101, 0.3);
   border-radius: 14px;
-  padding: 6px 12px;
+  padding: 8px 14px;
   box-shadow: 0 4px 12px rgba(42, 36, 24, 0.12);
   line-height: 1.2;
 }
 .batca-hud-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--pencil-gray);
 }
-.batca-hud-value { font-size: 18px; font-weight: 800; }
+.batca-hud-value { font-size: 20px; font-weight: 800; }
 .batca-hud-value.money { color: var(--orange-cta); }
+
+@media (min-width: 640px) {
+  .batca-hud {
+    padding: 16px 20px;
+  }
+  .batca-hud-pill {
+    padding: 10px 18px;
+  }
+  .batca-hud-label {
+    font-size: 12px;
+  }
+  .batca-hud-value {
+    font-size: 24px;
+  }
+}
 
 .batca-depthbar {
   position: absolute;
-  left: 16px; top: 92px; bottom: 90px;
-  width: 8px;
+  left: 14px; top: 80px; bottom: 80px;
+  width: 10px;
   background: rgba(42, 36, 24, 0.12);
   border-radius: 999px;
   overflow: hidden;
@@ -108,6 +138,13 @@
   left: 0; right: 0; top: 0;
   background: linear-gradient(180deg, #7fb4c4, #2f6f86);
   border-radius: 999px;
+}
+
+@media (min-width: 640px) {
+  .batca-depthbar {
+    left: 20px; top: 100px; bottom: 100px;
+    width: 12px;
+  }
 }
 
 .batca-hint {
@@ -261,3 +298,226 @@
 .batca-earned { font-size: 32px; font-weight: 800; color: var(--orange-cta); }
 .batca-row-btns { display: flex; gap: 10px; }
 .batca-row-btns .batca-btn { flex: 1; padding: 14px 12px; font-size: 15px; }
+
+/* ---- casts bar ---- */
+.batca-casts-bar {
+  position: absolute;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 6;
+}
+.batca-cast-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(42, 36, 24, 0.2);
+  transition: all 0.3s ease;
+}
+.batca-cast-dot.active {
+  background: var(--orange-cta);
+  box-shadow: 0 0 8px rgba(232, 116, 50, 0.5);
+}
+.batca-cast-dot.used {
+  background: var(--bamboo-green);
+}
+
+/* ---- round feedback animation ---- */
+@keyframes fade-in-out {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}
+.animate-fade-in-out {
+  animation: fade-in-out 1.5s ease-in-out forwards;
+}
+
+/* ---- Game Shell (Desktop wrapper) ---- */
+.game-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5ecd7 0%, #efe3c4 50%, #e6d8b2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.game-shell-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(200, 214, 138, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(240, 184, 64, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.game-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 639px) {
+  .game-frame {
+    width: 100vw;
+    height: 100dvh;
+    aspect-ratio: 390 / 844;
+    max-height: 100dvh;
+  }
+}
+
+@media (min-width: 640px) {
+  .game-frame {
+    width: auto;
+    height: min(90vh, 800px);
+    aspect-ratio: 390 / 844;
+    max-width: 90vw;
+    min-height: auto;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(42, 36, 24, 0.25);
+    overflow: hidden;
+  }
+}
+
+/* ---- timer bar ---- */
+.batca-timer-bar {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 160px;
+  height: 18px;
+  background: rgba(42, 36, 24, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  z-index: 6;
+  border: 1.5px solid rgba(138, 125, 101, 0.2);
+}
+.batca-timer-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #6b8e3d, #f0b840);
+  border-radius: 999px;
+  transition: width 0.2s linear;
+}
+.batca-timer-fill-low {
+  background: linear-gradient(90deg, #c23838, #e87432);
+}
+.batca-timer-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--ink-dark);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+.batca-timer-text-low {
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ---- combo pill ---- */
+
+/* ---- active buffs bar ---- */
+.batca-buffs-bar {
+  position: absolute;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 6;
+}
+.batca-buff-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255,255,255,0.4);
+  box-shadow: 0 4px 10px rgba(42,36,24,0.15);
+}
+.batca-buff-pill.strength { background: linear-gradient(180deg, #f08a48, var(--orange-cta)); color: #fff; }
+
+/* ---- shop panel ---- */
+.batca-shop-card { max-width: 380px; }
+.batca-shop-list { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
+.batca-shop-qty-btn {
+  width: 28px; height: 28px; border-radius: 999px;
+  border: 2px solid var(--pencil-gray);
+  background: #fff;
+  color: var(--ink-dark);
+  font-weight: 800; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.batca-shop-total {
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pencil-gray);
+}
+.batca-shop-total span { color: var(--orange-cta); font-size: 18px; }
+
+.batca-buff-pill.bignet { background: linear-gradient(180deg, #9fb6c8, #5aa8c7); color: #fff; }
+.batca-buff-pill.dynamite {
+  background: linear-gradient(180deg, #c23838, #a02a2a);
+  color: #fff;
+  cursor: pointer;
+}
+.batca-buff-pill.dynamite:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.batca-combo-pill {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #f08a48, var(--orange-cta));
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(232, 116, 50, 0.35);
+  z-index: 6;
+  animation: combo-pop 0.25s ease-out;
+}
+@keyframes combo-pop {
+  0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+  80% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); }
+}
+
+/* ---- weight pill ---- */
+.batca-weight-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pencil-gray);
+  background: rgba(42, 36, 24, 0.06);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+

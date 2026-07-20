@@ -1,0 +1,140 @@
+/* Global App Styles */
+html { scroll-behavior: smooth; }
+body { margin: 0; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--paper-warm, #efe3c4); }
+::-webkit-scrollbar-thumb { background: #c8bfa6; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--pencil-gray, #a89c80); }
+
+/* Landing page entrance animation */
+.landing-enter {
+  animation: landingReveal 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes landingReveal {
+  0% { opacity: 0; transform: translateY(24px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Hero animations */
+.hero-badge {
+  animation: heroSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+.hero-title {
+  animation: heroSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+}
+.hero-desc {
+  animation: heroSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+}
+.hero-cta {
+  animation: heroCTAPop 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+}
+
+@keyframes heroSlideUp {
+  0% { opacity: 0; transform: translateY(36px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes heroCTAPop {
+  0% { opacity: 0; transform: translateY(28px) scale(0.85); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Landing hero responsive composition */
+@media (max-width: 640px) {
+  .hero-section {
+    min-height: 100svh !important;
+    padding-top: 64px !important;
+    place-items: start center !important;
+  }
+
+  .hero-content {
+    width: min(100%, 390px) !important;
+    padding: 100px 22px 0 !important;
+    gap: 18px !important;
+  }
+
+  .hero-badge {
+    font-size: 11px !important;
+    letter-spacing: 1.2px !important;
+    padding: 6px 14px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(38px, 11vw, 46px) !important;
+    line-height: 1.02 !important;
+  }
+
+  .hero-desc {
+    display: none !important;
+  }
+
+  .hero-cta {
+    margin-top: 0 !important;
+    gap: 10px !important;
+  }
+
+  .hero-play-button {
+    padding: 15px 34px !important;
+    font-size: 17px !important;
+    min-width: 180px !important;
+  }
+
+  .hero-peanut-stage {
+    left: 26px !important;
+    bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    width: clamp(130px, 39vw, 158px) !important;
+  }
+
+  .carousel-container {
+    flex-direction: column !important;
+  }
+  .carousel-card {
+    grid-template-columns: 1fr !important;
+    padding: 20px !important;
+  }
+  .footer-grid {
+    grid-template-columns: 1fr !important;
+    gap: 30px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-content {
+    padding-top: 80px !important;
+    gap: 15px !important;
+  }
+
+  .hero-title {
+    font-size: 37px !important;
+  }
+
+  .hero-peanut-stage {
+    width: 128px !important;
+    left: 20px !important;
+  }
+}
+
+@media (max-width: 640px) and (max-height: 760px) {
+  .hero-content {
+    padding-top: 60px !important;
+    gap: 13px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(34px, 10vw, 40px) !important;
+  }
+
+  .hero-play-button {
+    padding: 13px 30px !important;
+  }
+
+  .hero-peanut-stage {
+    width: 120px !important;
+    left: 18px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .brandName { display: none; }
+}

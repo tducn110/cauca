@@ -1,36 +1,39 @@
-import { useCallback, useRef, useState } from "react";
-import { Game, GameMode, HudSnapshot, CaughtSummary } from "./engine";
+import { useBatCaGame, type EndGameData } from "./hooks/useBatCaGame";
 import { GameCanvas } from "./GameCanvas";
-import { StartScreen, GameplayHud, UpgradePanel, CatchResultPanel } from "./ui";
+import { TutorialOverlay, GameplayHud, UpgradePanel, ShopPanel, RoundFeedback, LevelSummary } from "./ui";
 import "./batca.css";
 
-export function BatCaAoLang() {
-  const gameRef = useRef<Game | null>(null);
-  if (!gameRef.current) gameRef.current = new Game();
-  const game = gameRef.current;
+interface Props {
+  onEndGame?: (data: EndGameData) => void;
+}
 
-  const [mode, setMode] = useState<GameMode>("start");
-  const [hud, setHud] = useState<HudSnapshot>(() => game.hud());
-  const [summary, setSummary] = useState<CaughtSummary | null>(null);
-  const [, force] = useState(0);
-  const refresh = () => { setHud(game.hud()); force((n) => n + 1); };
-
-  // Khi bán cá xong (lưới về mặt nước) -> mở bảng kết quả
-  game.onSell = useCallback((s: CaughtSummary) => {
-    setSummary(s);
-    setMode("result");
-    setHud(game.hud());
-  }, [game]);
-
-  const onHud = useCallback((h: HudSnapshot) => setHud(h), []);
-
-  const play = () => { game.mode = "playing"; setMode("playing"); };
-  const continuePlay = () => { game.mode = "playing"; setMode("playing"); };
-  const openUpgrade = () => { game.mode = "upgrade"; setMode("upgrade"); setHud(game.hud()); };
-  const closeUpgrade = () => { game.mode = "playing"; setMode("playing"); };
+export function BatCaAoLang({ onEndGame }: Props) {
+  const {
+    game,
+    mode,
+    hud,
+    levelDef,
+    currentLevel,
+    totalScore,
+    levelScore,
+    levelFishCaught,
+    castsLeft,
+    lastFeedback,
+    hasAffordableUpgrade,
+    refresh,
+    onHud,
+    play,
+    startNextLevel,
+    endGame,
+    openUpgrade,
+    closeUpgrade,
+    openShop,
+    closeShop,
+    useDynamite,
+  } = useBatCaGame(onEndGame);
 
   const active = mode === "playing";
-  const showHud = mode === "playing";
+  const canUseDynamite = game.carrying.some((f) => f.kind.isBad) && (hud.activeBuffs.dynamite ?? 0) > 0;
 
   return (
     <div className="batca-root">
@@ -38,10 +41,40 @@ export function BatCaAoLang() {
         <GameCanvas game={game} active={active} onHud={onHud} />
 
         <div className="batca-overlay">
-          {showHud && <GameplayHud hud={hud} onOpenUpgrade={openUpgrade} />}
+          {(mode === "playing" || mode === "levelSummary") && (
+            <GameplayHud
+              hud={hud}
+              castsLeft={castsLeft}
+              castsPerRound={levelDef.casts}
+              currentLevel={currentLevel}
+              levelTime={levelDef.time}
+              canUseDynamite={canUseDynamite}
+              onOpenUpgrade={openUpgrade}
+              onUseDynamite={useDynamite}
+            />
+          )}
 
           {mode === "start" && (
-            <StartScreen best={hud.bestMoney} onPlay={play} />
+            <TutorialOverlay onReady={play} />
+          )}
+
+          {mode === "playing" && lastFeedback && (
+            <RoundFeedback feedback={lastFeedback} onDone={() => {}} />
+          )}
+
+          {mode === "levelSummary" && (
+            <LevelSummary
+              levelDef={levelDef}
+              levelScore={levelScore}
+              levelFishCaught={levelFishCaught}
+              totalScore={totalScore}
+              hasAffordableUpgrade={hasAffordableUpgrade}
+              nextLevelBuffs={game.nextLevelBuffs}
+              onNextLevel={startNextLevel}
+              onUpgrade={openUpgrade}
+              onShop={openShop}
+              onEndGame={endGame}
+            />
           )}
 
           {mode === "upgrade" && (
@@ -53,12 +86,12 @@ export function BatCaAoLang() {
             />
           )}
 
-          {mode === "result" && summary && (
-            <CatchResultPanel
-              summary={summary}
+          {mode === "shop" && (
+            <ShopPanel
+              game={game}
               money={hud.money}
-              onUpgrade={openUpgrade}
-              onContinue={continuePlay}
+              onBuy={refresh}
+              onClose={closeShop}
             />
           )}
         </div>

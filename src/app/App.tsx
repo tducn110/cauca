@@ -1,9 +1,7 @@
-import { BatCaAoLang } from "./components/bat-ca/BatCaAoLang";
+import { useAppShell } from "./hooks/useAppShell";
+import { GameApp } from "./GameApp";
 
 export default function App() {
-  return (
-    <div className="size-full">
-      <BatCaAoLang />
-    </div>
-  );
+  const shell = useAppShell();
+  return <GameApp {...shell} />;
 }
