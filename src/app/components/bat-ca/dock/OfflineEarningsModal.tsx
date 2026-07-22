@@ -1,4 +1,4 @@
-import { Gift, Coins, Clock, X } from "lucide-react";
+import { Gift, Coins, Clock } from "lucide-react";
 import { claimOfflineEarnings } from "../game/storage";
 import { gameAudio } from "../../../audio/audioManager";
 import "./fishing-dock-screen.css";

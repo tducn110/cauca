@@ -5,6 +5,7 @@ import {
   claimOfflineEarnings,
   getDockProgression,
   purchaseDockUpgrade,
+  recordFishingCatch,
   type DockUpgradeType,
   type GiftClaimResult,
   type OfflineClaimResult,
@@ -80,6 +81,13 @@ export function useDockProgression(options: UseDockProgressionOptions = {}) {
     };
   }, [claimOffline, refresh]);
 
+  const recordCatch = useCallback((earned: number, caughtFishTypes: string[]): SaveData => {
+    const updated = recordFishingCatch(earned, caughtFishTypes);
+    setSave(updated);
+    setNow(Date.now());
+    return updated;
+  }, []);
+
   return {
     ...getDockProgression(now, save),
     lastOfflineClaim,
@@ -87,5 +95,7 @@ export function useDockProgression(options: UseDockProgressionOptions = {}) {
     claimOffline,
     claimGift,
     purchaseUpgrade,
+    recordCatch,
   };
 }
+

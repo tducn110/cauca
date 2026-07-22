@@ -1,14 +1,6 @@
-import {
-  Anchor,
-  ArrowDownToLine,
-  ArrowUp,
-  CircleDollarSign,
-  Fish,
-  Gift,
-  PackageOpen,
-  Settings,
-  Trophy,
-} from "lucide-react";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { Anchor, Coins, Fish, Gift, Settings, Trophy } from "lucide-react";
 
 import type { DockUpgradeType } from "./progression";
 import "./fishing-dock.css";
@@ -42,30 +34,25 @@ export interface DockHudProps {
   currencySuffix?: string;
 }
 
-
 const UPGRADE_ORDER: readonly DockUpgradeId[] = ["capacity", "depth", "offlineRate"];
 
 const UPGRADE_META = {
   capacity: {
-    label: "Sức chứa",
-    icon: PackageOpen,
+    label: "SỨC CHỨA",
+    renderIcon: () => <Fish size={18} strokeWidth={2.8} className="text-[#0284c7]" />,
   },
   depth: {
-    label: "Độ sâu",
-    icon: ArrowDownToLine,
+    label: "ĐỘ SÂU",
+    renderIcon: () => <Anchor size={18} strokeWidth={2.8} className="text-[#ea580c]" />,
   },
   offlineRate: {
-    label: "Thu nhập rảnh",
-    icon: CircleDollarSign,
+    label: "THU NHẬP RẢNH",
+    renderIcon: () => <Coins size={18} strokeWidth={2.8} className="text-[#16a34a]" />,
   },
 } as const;
 
-function finiteNonNegative(value: number): number {
-  return Number.isFinite(value) ? Math.max(0, value) : 0;
-}
-
 function compactNumber(value: number): string {
-  const safeValue = finiteNonNegative(value);
+  const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
   const units = [
     { threshold: 1_000_000_000, suffix: "Tỷ" },
     { threshold: 1_000_000, suffix: "Tr" },
@@ -85,15 +72,38 @@ function formatCurrency(value: number, suffix: string): string {
 }
 
 function formatCooldown(remainingMs: number): string {
-  const safeSeconds = Math.ceil(finiteNonNegative(remainingMs) / 1_000);
+  const safeSeconds = Math.ceil(Math.max(0, remainingMs) / 1_000);
   const hours = Math.floor(safeSeconds / 3600);
   const minutes = Math.floor((safeSeconds % 3600) / 60);
   const seconds = safeSeconds % 60;
   return [hours, minutes, seconds].map((unit) => String(unit).padStart(2, "0")).join(":");
 }
 
-function joinClassNames(...classNames: Array<string | undefined | false>): string {
-  return classNames.filter(Boolean).join(" ");
+// Custom hook component for floating arrow animation via GSAP
+function FloatingUpgradeArrow({ active }: { active: boolean }) {
+  const arrowRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!active || !arrowRef.current) return;
+    const tween = gsap.to(arrowRef.current, {
+      y: -7,
+      repeat: -1,
+      yoyo: true,
+      duration: 0.55,
+      ease: "sine.inOut",
+    });
+    return () => {
+      tween.kill();
+    };
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <span ref={arrowRef} className="fishing-dock-hud__upgrade-arrow" aria-hidden="true">
+      <img src="/assets/fishing/ui/icon_arrow.png" alt="" className="fishing-dock-hud__upgrade-arrow-img" />
+    </span>
+  );
 }
 
 export function DockHud({
@@ -104,21 +114,23 @@ export function DockHud({
   upgrades,
   onOpenSettings,
   onOpenHooks,
+  onOpenAquarium,
   onClaimGift,
   onBuyUpgrade,
   interactionLocked = false,
   className,
   currencySuffix = "đ",
 }: DockHudProps) {
-  const giftReady = finiteNonNegative(giftRemainingMs) <= 0;
-  const safeHooksLevel = Math.round(finiteNonNegative(hooksLevel));
+  const giftReady = Math.max(0, giftRemainingMs) <= 0;
+  const safeHooksLevel = Math.round(Math.max(0, hooksLevel));
 
   return (
     <section
-      className={joinClassNames("fishing-dock-hud", interactionLocked && "is-locked", className)}
+      className={`fishing-dock-hud ${interactionLocked ? "is-locked" : ""} ${className || ""}`}
       aria-label="Bến câu cá"
       aria-busy={interactionLocked}
     >
+      {/* Top Left Settings Button — Square with rounded corners (rounded-2xl) */}
       <button
         className="fishing-dock-hud__settings fishing-dock-hud__pressable"
         type="button"
@@ -130,22 +142,25 @@ export function DockHud({
         <Settings aria-hidden="true" strokeWidth={3} />
       </button>
 
+      {/* Top Center Earnings Display */}
       <div className="fishing-dock-hud__earnings" aria-live="polite">
-        <span className="fishing-dock-hud__eyebrow">Thu nhập</span>
+        <span className="fishing-dock-hud__eyebrow">THU NHẬP</span>
         <strong className="fishing-dock-hud__earnings-value">
           {formatCurrency(earnings, currencySuffix)}
         </strong>
       </div>
 
+      {/* Top Right Best Score Display */}
       <div
         className="fishing-dock-hud__best"
         aria-label={`Kỷ lục ${formatCurrency(bestScore, currencySuffix)}`}
       >
-        <span className="fishing-dock-hud__best-badge">Kỷ lục</span>
+        <span className="fishing-dock-hud__best-badge">BEST</span>
         <Trophy aria-hidden="true" strokeWidth={2.8} />
         <strong>{formatCurrency(bestScore, currencySuffix)}</strong>
       </div>
 
+      {/* Left Rail Menu Buttons — Pill/Rectangular Buttons with overlay animations */}
       <nav className="fishing-dock-hud__rail" aria-label="Đồ nghề và quà">
         <button
           className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
@@ -156,7 +171,7 @@ export function DockHud({
           title="Lưỡi câu"
         >
           <Anchor aria-hidden="true" strokeWidth={2.8} />
-          <span>Lưỡi câu</span>
+          <span>LƯỠI CÂU</span>
           <small>Cấp {safeHooksLevel}</small>
         </button>
 
@@ -169,17 +184,14 @@ export function DockHud({
           title="Thủy cung"
         >
           <Fish aria-hidden="true" strokeWidth={2.8} />
-          <span>Thủy cung</span>
+          <span>THỦY CUNG</span>
           <small>Bộ sưu tập</small>
         </button>
 
         <button
-          className={joinClassNames(
-            "fishing-dock-hud__rail-button",
-            "fishing-dock-hud__gift",
-            "fishing-dock-hud__pressable",
-            giftReady && !interactionLocked && "is-ready",
-          )}
+          className={`fishing-dock-hud__rail-button fishing-dock-hud__gift fishing-dock-hud__pressable ${
+            giftReady && !interactionLocked ? "is-ready" : ""
+          }`}
           type="button"
           onClick={onClaimGift}
           disabled={!giftReady || interactionLocked}
@@ -187,12 +199,12 @@ export function DockHud({
           title={giftReady ? "Nhận quà" : "Quà đang hồi"}
         >
           <Gift aria-hidden="true" strokeWidth={2.8} />
-          <span>{giftReady ? "Nhận quà" : "Quà tặng"}</span>
+          <span>{giftReady ? "NHẬN QUÀ" : "QUÀ TẶNG"}</span>
           <small>{giftReady ? "Sẵn sàng" : formatCooldown(giftRemainingMs)}</small>
         </button>
       </nav>
 
-
+      {/* Bottom Upgrade Panel — 3 Dual-style Cards with GSAP floating arrows */}
       <div
         className="fishing-dock-hud__upgrades"
         aria-label="Nâng cấp nhanh"
@@ -201,52 +213,38 @@ export function DockHud({
         {UPGRADE_ORDER.map((upgradeId) => {
           const upgrade = upgrades[upgradeId];
           const meta = UPGRADE_META[upgradeId];
-          const UpgradeIcon = meta.icon;
-          const safeLevel = Math.round(finiteNonNegative(upgrade.level));
-          const safeMaxLevel = Math.max(1, Math.round(finiteNonNegative(upgrade.maxLevel)));
+          const safeLevel = Math.round(Math.max(0, upgrade.level));
+          const safeMaxLevel = Math.max(1, Math.round(Math.max(0, upgrade.maxLevel)));
           const maxed = upgrade.cost === null || safeLevel >= safeMaxLevel;
+          const showArrow = !maxed && upgrade.affordable && !interactionLocked && !upgrade.disabled;
           const unavailable = interactionLocked || Boolean(upgrade.disabled) || maxed || !upgrade.affordable;
-          const progress = Math.min(100, (safeLevel / safeMaxLevel) * 100);
+
           const priceLabel = maxed
             ? "MAX"
             : formatCurrency(upgrade.cost ?? 0, currencySuffix);
-          const statusLabel = maxed
-            ? "đã nâng tối đa"
-            : !upgrade.affordable
-              ? "chưa đủ tiền"
-              : upgrade.disabled
-                ? "chưa thể nâng cấp"
-                : `giá ${priceLabel}`;
 
           return (
             <button
               key={upgradeId}
-              className={joinClassNames(
-                "fishing-dock-hud__upgrade",
-                "fishing-dock-hud__pressable",
-                maxed && "is-maxed",
-                !maxed && !upgrade.affordable && "is-unaffordable",
-              )}
+              className={`fishing-dock-hud__upgrade fishing-dock-hud__pressable ${
+                maxed ? "is-maxed" : ""
+              } ${!maxed && !upgrade.affordable ? "is-unaffordable" : ""}`}
               type="button"
               onClick={() => onBuyUpgrade(upgradeId)}
               disabled={unavailable}
-              aria-label={`${meta.label}, cấp ${safeLevel}, ${upgrade.value}, ${statusLabel}`}
-              title={`${meta.label}: ${statusLabel}`}
             >
-              {!maxed && (
-                <span className="fishing-dock-hud__upgrade-arrow" aria-hidden="true">
-                  <ArrowUp strokeWidth={3.4} />
-                </span>
-              )}
+              {/* GSAP Floating Upgrade Arrow */}
+              <FloatingUpgradeArrow active={showArrow} />
+
+              {/* White Upper Card Section */}
               <span className="fishing-dock-hud__upgrade-heading">
-                <UpgradeIcon aria-hidden="true" strokeWidth={2.8} />
+                {meta.renderIcon()}
                 <span>{meta.label}</span>
               </span>
+
               <strong className="fishing-dock-hud__upgrade-value">{upgrade.value}</strong>
-              <span className="fishing-dock-hud__upgrade-level">Cấp {safeLevel}</span>
-              <span className="fishing-dock-hud__upgrade-track" aria-hidden="true">
-                <span style={{ width: `${progress}%` }} />
-              </span>
+
+              {/* Bottom Price Pill Section */}
               <span className="fishing-dock-hud__upgrade-price">{priceLabel}</span>
             </button>
           );

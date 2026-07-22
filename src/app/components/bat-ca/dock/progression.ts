@@ -197,3 +197,28 @@ export function recordDockActivity(now = Date.now()): SaveData {
   saveProgress({ lastActiveAt: currentTime(now) });
   return persistedSave();
 }
+
+export function recordFishingCatch(earned: number, caughtFishTypes: string[], now = Date.now()): SaveData {
+  const safeNow = currentTime(now);
+  const save = loadSave();
+  const newMoney = Math.min(MAX_WALLET, save.money + Math.max(0, Math.round(earned)));
+  const bestMoney = Math.max(save.bestMoney, newMoney);
+  const bestRunScore = Math.max(save.bestRunScore, Math.round(earned));
+
+  const currentDiscovered = new Set(save.discoveredFish);
+  for (const type of caughtFishTypes) {
+    currentDiscovered.add(type);
+  }
+
+  saveProgress({
+    money: newMoney,
+    bestMoney,
+    bestRunScore,
+    lastRunScore: Math.round(earned),
+    discoveredFish: Array.from(currentDiscovered),
+    lastActiveAt: safeNow,
+  });
+
+  return persistedSave();
+}
+

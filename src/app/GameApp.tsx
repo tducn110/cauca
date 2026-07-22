@@ -1,15 +1,7 @@
-import { lazy, Suspense } from "react";
 import type { GameScreen } from "./hooks/useAppShell";
-import type { EndGameData } from "./components/bat-ca/hooks/useBatCaGame";
 import { LoadingScreen } from "./components/bat-ca/LoadingScreen";
 import { HomeScreen } from "./screens/HomeScreen";
-import { EndGameScreen } from "./screens/EndGameScreen";
 import { LeaderboardScreen } from "./screens/LeaderboardScreen";
-
-const GameContainer = lazy(async () => {
-  const module = await import("./screens/GameContainer");
-  return { default: module.GameContainer };
-});
 
 interface Props {
   screen: GameScreen;
@@ -21,12 +13,10 @@ interface Props {
   bestScore: number;
   lastScore: number;
   isNewBest: boolean;
-  endGameData: EndGameData | null;
   setMuted: (updater: (value: boolean) => boolean) => void;
   setShowDashboard: (value: boolean) => void;
   handleLoadingDone: () => void;
   handlePlay: () => void;
-  handleEndGame: (data: EndGameData) => void;
   handlePlayAgain: () => void;
   handleGoHome: () => void;
   handleShowLeaderboard: () => void;
@@ -42,16 +32,9 @@ export function GameApp({
   muted,
   bestScore,
   lastScore,
-  isNewBest,
-  endGameData,
   setMuted,
   setShowDashboard,
   handleLoadingDone,
-  handlePlay,
-  handleEndGame,
-  handlePlayAgain,
-  handleGoHome,
-  handleShowLeaderboard,
   handleBackFromLeaderboard,
 }: Props) {
   if (screen === "loading") {
@@ -62,50 +45,6 @@ export function GameApp({
         completeDelayMs={1150}
         exiting={loadingExiting}
       />
-    );
-  }
-
-  if (screen === "home") {
-    return (
-      <HomeScreen
-        bestScore={bestScore}
-        muted={muted}
-        onToggleMute={() => setMuted((m) => !m)}
-        onPlay={handlePlay}
-        onOpenDashboard={() => setShowDashboard(true)}
-        showDashboard={showDashboard}
-        onCloseDashboard={() => setShowDashboard(false)}
-        lastScore={lastScore}
-      />
-    );
-  }
-
-  if (screen === "gameplay") {
-    return (
-      <Suspense fallback={<div className="min-h-screen min-h-[100dvh] bg-rice-paper grid place-items-center font-bold text-ink-dark">Đang mở ao cá...</div>}>
-        <GameContainer
-          onEndGame={handleEndGame}
-        />
-      </Suspense>
-    );
-  }
-
-  if (screen === "end-game" && endGameData) {
-    return (
-      <div className="relative w-full h-screen bg-rice-paper">
-        <div className="absolute inset-0 bg-gradient-to-b from-rice-paper to-paper-warm" />
-        <EndGameScreen
-          score={endGameData.totalScore}
-          bestScore={bestScore}
-          fishCaught={endGameData.totalFishCaught}
-          levelReached={endGameData.levelReached}
-          reason={endGameData.reason}
-          isNewBest={isNewBest}
-          onPlayAgain={handlePlayAgain}
-          onGoHome={handleGoHome}
-          onShowLeaderboard={handleShowLeaderboard}
-        />
-      </div>
     );
   }
 
@@ -128,5 +67,15 @@ export function GameApp({
     );
   }
 
-  return null;
+  return (
+    <HomeScreen
+      bestScore={bestScore}
+      muted={muted}
+      onToggleMute={() => setMuted((m) => !m)}
+      onOpenDashboard={() => setShowDashboard(true)}
+      showDashboard={showDashboard}
+      onCloseDashboard={() => setShowDashboard(false)}
+      lastScore={lastScore}
+    />
+  );
 }

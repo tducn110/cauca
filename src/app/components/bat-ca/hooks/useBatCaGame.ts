@@ -4,6 +4,7 @@ import { getLevelDef } from "../game/levels";
 import { UPGRADE_DEFS, upgradeCost } from "../engine";
 import { ROUND_FEEDBACK_DURATION_MS } from "../game/constants";
 import { gameAudio } from "../../../audio/audioManager";
+import { recordDiscoveredFish } from "../game/storage";
 
 export type EndReason = "target-not-reached" | "time-out" | "quit" | "completed";
 

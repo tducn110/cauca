@@ -1,0 +1,55 @@
+{
+  "name": "duck_fishing_arm_pivot_preview",
+  "canvas": {
+    "width": 480,
+    "height": 541
+  },
+  "fps_approx": 10,
+  "loop": true,
+  "cycle_frame_order": [
+    4,
+    6,
+    3,
+    1,
+    2,
+    5,
+    2,
+    1,
+    3,
+    6
+  ],
+  "durations_ms": [
+    150,
+    90,
+    90,
+    90,
+    140,
+    150,
+    90,
+    90,
+    90,
+    100
+  ],
+  "pivot_guide": {
+    "description": "Đặt pivot tại cổ tay/bàn tay gần thân vịt, nơi tay giữ cán cần.",
+    "x": 294,
+    "y": 337,
+    "note": "Đây là tọa độ tham khảo trên frame 480x541; chỉnh vài pixel khi tách layer tay+cần."
+  },
+  "recommended_runtime_motion": {
+    "rotation_degrees": [
+      -5,
+      5
+    ],
+    "vertical_offset_px": [
+      -4,
+      4
+    ],
+    "cycle_duration_ms": 1100,
+    "boat_vertical_offset_px": [
+      -2,
+      2
+    ],
+    "boat_cycle_duration_ms": 1800
+  }
+}

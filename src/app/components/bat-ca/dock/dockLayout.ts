@@ -2,13 +2,10 @@ export const DOCK_DESIGN_WIDTH = 1280;
 export const DOCK_DESIGN_HEIGHT = 720;
 
 const CHARACTER_SOURCE = {
-  width: 1478,
-  height: 1064,
-  // The supplied character texture includes the boat, rod, line and hook.
-  // After mirroring it, this source-space hook offset lets the boat stay on
-  // the right while the baked hook lands exactly on the gameplay axis.
-  hookX: 1334,
-  hookY: 760,
+  width: 480,
+  height: 541,
+  hookX: 294,
+  hookY: 337,
 } as const;
 
 export const DOCK_LAYOUT_RATIOS = {
@@ -156,33 +153,15 @@ export function createDockLayout(
   const upgradePanelTop = playGaugeCenterY + playGaugeSize / 2 + gaugeToCardsGap;
   const upgradePanelCenterY = upgradePanelTop + upgradeCardHeight / 2;
 
-  const hookSourceX = CHARACTER_SOURCE.hookX / CHARACTER_SOURCE.width;
-  const hookOffsetFromCenter = hookSourceX - 0.5;
-  const requestedCharacterWidth = compact
-    ? Math.min(width * 0.58, height * 0.42)
-    : Math.min(
-      width * DOCK_LAYOUT_RATIOS.characterWidth,
-      height * DOCK_LAYOUT_RATIOS.characterHeightLimit,
-    );
-  // With a centered sprite anchor, the mirrored texture's right edge must stay
-  // inside the safe area while its baked hook remains on gameplayAxisX.
-  const maxCharacterWidth = (width - rightSafe - gameplayAxisX) / hookSourceX;
-  const characterWidth = Math.min(
-    clamp(
-      requestedCharacterWidth,
-      compact || short ? 150 : 300,
-      compact ? 280 : short ? 360 : 520,
-    ),
-    Math.max(1, maxCharacterWidth),
-  );
+  const characterWidth = compact
+    ? clamp(width * 0.35, 160, 240)
+    : clamp(width * 0.18, 220, 270);
   const characterHeight = characterWidth * (CHARACTER_SOURCE.height / CHARACTER_SOURCE.width);
-  const boatAnchorX = gameplayAxisX + hookOffsetFromCenter * characterWidth;
-  const boatAnchorY = waterlineY + clamp(height * 0.032, 16, 30);
+  const boatAnchorX = width * 0.63;
+  const boatAnchorY = waterlineY + 4;
   const hookY = boatAnchorY
     - characterHeight * (1 - CHARACTER_SOURCE.hookY / CHARACTER_SOURCE.height);
-  const channelWidth = compact
-    ? clamp(width * DOCK_LAYOUT_RATIOS.compactChannelWidth, 176, 320)
-    : clamp(width * DOCK_LAYOUT_RATIOS.channelWidth, 300, 460);
+  const channelWidth = clamp(width * 0.38, 360, 540);
 
   return {
     width,

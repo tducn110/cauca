@@ -3,7 +3,9 @@ import { gameAudio } from "../../../audio/audioManager";
 import { DEPTH_UPGRADE_DELTA, INITIAL_CAPACITY, INITIAL_MAX_DEPTH } from "../game/constants";
 import { UPGRADE_META } from "../game/fish-data";
 import { DockHud, type DockUpgradeMap } from "./DockHud";
-import { FishingDockCanvas, type PowerLockResult } from "./FishingDockCanvas";
+import { UnderwaterHud } from "./UnderwaterHud";
+import { CatchResultOverlay } from "./CatchResultOverlay";
+import { FishingDockCanvas, type FishingState, type PowerLockResult, type CatchSummary } from "./FishingDockCanvas";
 import {
   createDockLayout,
   dockLayoutCssVariables,
@@ -19,12 +21,13 @@ import { calculateOfflineEarnings } from "../game/storage";
 import "./fishing-dock-screen.css";
 
 type DockPanel = "settings" | "hooks" | "aquarium" | null;
+type FishingPhase = "dock" | "casting" | "descending" | "ascending" | "result";
 
 type Props = {
   muted: boolean;
   onToggleMute: () => void;
-  onPlay: () => void;
-  onShowStats: () => void;
+  onPlay?: () => void;
+  onShowStats?: () => void;
 };
 
 function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
@@ -42,7 +45,7 @@ function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
   };
 }
 
-export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: Props) {
+export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const progression = useDockProgression();
   const screenRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => createDockLayout());
@@ -51,9 +54,27 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
   const [offlineEarningsData, setOfflineEarningsData] = useState<{ amount: number; eligibleMinutes: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [launchResult, setLaunchResult] = useState<PowerLockResult | null>(null);
+
+  // Explicit Fishing Phase state
+  const [phase, setPhase] = useState<FishingPhase>("dock");
+  const [activeFishingInfo, setActiveFishingInfo] = useState<{
+    depthMeters: number;
+    maxDepthMeters: number;
+    capacity: number;
+    caughtCount: number;
+    runEarnings: number;
+  }>({
+    depthMeters: 0,
+    maxDepthMeters: INITIAL_MAX_DEPTH,
+    capacity: INITIAL_CAPACITY,
+    caughtCount: 0,
+    runEarnings: 0,
+  });
+  const [lastCatchSummary, setLastCatchSummary] = useState<CatchSummary | null>(null);
+  const [isNewBest, setIsNewBest] = useState(false);
+
   const launchTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
-  const launching = launchResult !== null;
 
   // Check offline earnings on mount
   useEffect(() => {
@@ -168,57 +189,128 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
   };
 
   const lockPower = (result: PowerLockResult) => {
-    if (launching || panel !== null || showOfflineModal) return;
+    if (phase !== "dock" || panel !== null || showOfflineModal) return;
     setLaunchResult(result);
     gameAudio.play(result.label === "MAX" ? "level" : "click");
-    try {
-      sessionStorage.setItem("batca-cast-power", String(result.power));
-    } catch {
-      // Session storage can be unavailable in embedded contexts.
-    }
     launchTimerRef.current = window.setTimeout(() => {
       launchTimerRef.current = null;
-      onPlay();
+      setLaunchResult(null);
     }, 720);
   };
 
-  const isInteractionLocked = launching || panel !== null || showOfflineModal;
+  const handleCatchComplete = (summary: CatchSummary) => {
+    const prevBest = progression.bestRunScore;
+    progression.recordCatch(summary.earned, summary.caughtFishTypes);
+    const newBest = summary.earned > 0 && summary.earned > prevBest;
+
+    setIsNewBest(newBest);
+    setLastCatchSummary(summary);
+    setPhase("result");
+  };
+
+  const handleStateChange = (
+    state: FishingState,
+    depthMeters: number,
+    maxDepthMeters: number,
+    capacity: number,
+    caughtCount: number,
+    runEarnings: number,
+  ) => {
+    if (state === "idle") {
+      setPhase("dock");
+    } else if (state === "casting") {
+      setPhase("casting");
+    } else if (state === "descending") {
+      setPhase("descending");
+    } else if (state === "ascending") {
+      setPhase("ascending");
+    }
+
+    setActiveFishingInfo({
+      depthMeters,
+      maxDepthMeters,
+      capacity,
+      caughtCount,
+      runEarnings,
+    });
+  };
+
+  const handleCollectResult = () => {
+    gameAudio.play("buy");
+    setPhase("dock");
+    setLastCatchSummary(null);
+  };
+
+  const isInteractionLocked = phase !== "dock" || launchResult !== null || panel !== null || showOfflineModal;
+  const isUnderwater = phase === "descending" || phase === "ascending";
 
   return (
     <main
       ref={screenRef}
-      className={`fishing-dock-screen${launching ? " is-launching" : ""}`}
+      className={`fishing-dock-screen${isUnderwater ? " is-fishing" : ""}`}
       style={layoutStyle}
       data-gameplay-axis-x={layout.gameplayAxisX.toFixed(2)}
       data-waterline-y={layout.waterlineY.toFixed(2)}
     >
+      {/* Pixi Canvas Background Scene */}
       <FishingDockCanvas
         layout={layout}
+        capacityLevel={progression.capacityLevel}
+        depthLevel={progression.depthLevel}
         onPowerLock={lockPower}
+        onCatchComplete={handleCatchComplete}
+        onStateChange={handleStateChange}
         disabled={isInteractionLocked}
       />
-      <DockHud
-        earnings={progression.earnings}
-        bestScore={progression.bestRunScore}
-        giftRemainingMs={progression.giftRemainingMs}
-        hooksLevel={progression.capacityLevel + 1}
-        upgrades={upgrades}
-        onOpenSettings={() => {
-          gameAudio.play("click");
-          setPanel("settings");
-        }}
-        onOpenHooks={() => {
-          gameAudio.play("click");
-          setPanel("hooks");
-        }}
-        onOpenAquarium={() => {
-          gameAudio.play("click");
-          setPanel("aquarium");
-        }}
-        onClaimGift={claimGift}
-        onBuyUpgrade={buyUpgrade}
-        interactionLocked={isInteractionLocked}
-      />
+
+      {/* DOCK HUD: Rendered ONLY when in dock or casting phase! Unmounted when underwater or in result */}
+      {(phase === "dock" || phase === "casting") && (
+        <DockHud
+          earnings={progression.earnings}
+          bestScore={progression.bestRunScore}
+          giftRemainingMs={progression.giftRemainingMs}
+          hooksLevel={progression.capacityLevel + 1}
+          upgrades={upgrades}
+          onOpenSettings={() => {
+            gameAudio.play("click");
+            setPanel("settings");
+          }}
+          onOpenHooks={() => {
+            gameAudio.play("click");
+            setPanel("hooks");
+          }}
+          onOpenAquarium={() => {
+            gameAudio.play("click");
+            setPanel("aquarium");
+          }}
+          onClaimGift={claimGift}
+          onBuyUpgrade={buyUpgrade}
+          interactionLocked={isInteractionLocked}
+        />
+      )}
+
+      {/* UNDERWATER HUD: Rendered ONLY during descending / ascending phases */}
+      {isUnderwater && (
+        <UnderwaterHud
+          state={phase === "descending" ? "descending" : "ascending"}
+          depthMeters={activeFishingInfo.depthMeters}
+          maxDepthMeters={activeFishingInfo.maxDepthMeters}
+          capacity={activeFishingInfo.capacity}
+          caughtCount={activeFishingInfo.caughtCount}
+          runEarnings={activeFishingInfo.runEarnings}
+          muted={muted}
+          onToggleMute={onToggleMute}
+        />
+      )}
+
+      {/* RESULT OVERLAY: Rendered ONLY during result phase */}
+      {phase === "result" && lastCatchSummary && (
+        <CatchResultOverlay
+          summary={lastCatchSummary}
+          isNewBest={isNewBest}
+          onCollect={handleCollectResult}
+        />
+      )}
 
       {notice && <div className="fishing-dock-screen__notice" role="status">{notice}</div>}
       {launchResult && (

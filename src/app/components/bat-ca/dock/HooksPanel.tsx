@@ -1,4 +1,4 @@
-import { Anchor, Sparkles, Check, Lock, X } from "lucide-react";
+import { Anchor, Sparkles, X, Coins } from "lucide-react";
 import { useState } from "react";
 import { HOOK_DEFINITIONS, getHookDefinition, RANDOM_HOOK_UNLOCK_PRICE, type HookDefinition } from "../game/hooks-data";
 import { loadSave, selectHook, unlockRandomHook } from "../game/storage";
@@ -43,122 +43,94 @@ export function HooksPanel({ onClose, onNotice }: Props) {
   const allUnlocked = save.unlockedHooks.length >= HOOK_DEFINITIONS.length;
 
   return (
-    <div className="fishing-dock-screen__backdrop" onClick={onClose}>
-      <section
-        className="fishing-dock-screen__panel hooks-panel-content max-w-2xl w-full p-6 bg-slate-900/95 text-white rounded-3xl border border-amber-500/30 shadow-2xl backdrop-blur-xl"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200" onClick={onClose}>
+      <div
+        className="relative w-full max-w-lg p-6 bg-gradient-to-b from-[#1b65d3] to-[#124ba3] text-white rounded-3xl border-2 border-white/20 shadow-2xl flex flex-col items-center gap-5"
         role="dialog"
         aria-modal="true"
         aria-labelledby="hooks-panel-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-              <Anchor size={22} />
-            </div>
-            <div>
-              <h2 id="hooks-panel-title" className="text-xl font-bold text-amber-300">
-                Bộ Sưu Tập Lưỡi Câu
-              </h2>
-              <p className="text-xs text-slate-400">
-                Ví xu: <span className="font-extrabold text-amber-400">{save.money.toLocaleString("vi-VN")}đ</span>
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
-            onClick={onClose}
-            aria-label="Đóng"
-          >
-            <X size={20} />
-          </button>
+        {/* Top Left Coin Counter Badge */}
+        <div className="absolute top-5 left-5 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/40 border border-white/20 text-white font-extrabold text-sm shadow-md">
+          <span className="text-amber-400">🟡</span>
+          <span>{save.money.toLocaleString("vi-VN")}</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto pr-1">
-          {HOOK_DEFINITIONS.map((hook: HookDefinition) => {
+        {/* Top Right Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-5 right-5 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-md cursor-pointer"
+          aria-label="Đóng"
+        >
+          <X size={20} />
+        </button>
+
+        {/* Center Title with Wavy Underline */}
+        <div className="flex flex-col items-center mt-1">
+          <h2 id="hooks-panel-title" className="text-3xl font-black tracking-wider uppercase text-white drop-shadow-md">
+            LƯỠI CÂU
+          </h2>
+          {/* Wavy Underline */}
+          <div className="w-24 h-2 mt-1 text-sky-300 flex justify-center">
+            <svg viewBox="0 0 100 20" className="w-full h-full fill-none stroke-current stroke-[4]">
+              <path d="M0,10 Q25,0 50,10 T100,10" />
+            </svg>
+          </div>
+        </div>
+
+        {/* 3x3 Grid of 9 Hook Slots (white rounded cards) */}
+        <div className="grid grid-cols-3 gap-3.5 w-full my-2">
+          {HOOK_DEFINITIONS.slice(0, 9).map((hook: HookDefinition) => {
             const isUnlocked = save.unlockedHooks.includes(hook.id);
             const isSelected = save.selectedHook === hook.id;
 
             return (
-              <div
+              <button
                 key={hook.id}
-                className={`relative p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                type="button"
+                onClick={() => isUnlocked && handleSelect(hook.id)}
+                disabled={!isUnlocked}
+                className={`relative aspect-square rounded-2xl flex items-center justify-center p-3 transition-all cursor-pointer ${
                   isSelected
-                    ? "bg-amber-500/15 border-amber-400 shadow-md shadow-amber-500/10"
+                    ? "bg-white border-4 border-[#ff6b00] shadow-[0_0_18px_rgba(255,107,0,0.6)] scale-[1.03]"
                     : isUnlocked
-                    ? "bg-slate-800/80 border-slate-700 hover:border-slate-500"
-                    : "bg-slate-900/60 border-slate-800/80 opacity-70"
+                    ? "bg-white/95 border-2 border-white hover:bg-white hover:scale-[1.02] shadow-md"
+                    : "bg-white/40 border-2 border-white/30 opacity-60 cursor-not-allowed"
                 }`}
+                title={isUnlocked ? hook.name : "Chưa mở khóa"}
               >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white shadow"
-                        style={{ backgroundColor: hook.color }}
-                      >
-                        <Anchor size={18} style={{ color: hook.accentColor }} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm text-slate-100">{hook.name}</h3>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 uppercase font-semibold">
-                          {hook.rarity}
-                        </span>
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <span className="flex items-center gap-1 text-xs text-amber-400 font-extrabold bg-amber-400/10 px-2 py-1 rounded-full border border-amber-400/30">
-                        <Check size={12} /> Đang dùng
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-300 mt-1 mb-3">{hook.desc}</p>
+                {/* Hook Icon */}
+                <div
+                  className="w-12 h-12 flex items-center justify-center text-slate-800"
+                  style={{ color: isUnlocked ? hook.accentColor || "#1e293b" : "#94a3b8" }}
+                >
+                  <Anchor size={36} strokeWidth={2.8} />
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                  <div className="text-[11px] text-amber-300/90 font-medium">
-                    {hook.valueMultiplier > 1 && `+${Math.round((hook.valueMultiplier - 1) * 100)}% Giá cá `}
-                    {hook.speedMultiplier > 1 && `+${Math.round((hook.speedMultiplier - 1) * 100)}% Tốc độ `}
+                {/* Orange Selected Badge Marker */}
+                {isSelected && (
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#ff6b00] text-white flex items-center justify-center shadow-md">
+                    <Sparkles size={13} />
                   </div>
-
-                  {isUnlocked ? (
-                    !isSelected && (
-                      <button
-                        type="button"
-                        onClick={() => handleSelect(hook.id)}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow transition-colors"
-                      >
-                        Trang bị
-                      </button>
-                    )
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs text-slate-500 font-semibold">
-                      <Lock size={14} /> Khóa
-                    </span>
-                  )}
-                </div>
-              </div>
+                )}
+              </button>
             );
           })}
         </div>
 
-        <div className="mt-5 pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="text-xs text-slate-400 text-center sm:text-left">
-            Đã mở khóa: <strong className="text-amber-400">{save.unlockedHooks.length} / {HOOK_DEFINITIONS.length}</strong> lưỡi câu
-          </div>
-
-          <button
-            type="button"
-            disabled={allUnlocked || save.money < RANDOM_HOOK_UNLOCK_PRICE}
-            onClick={handleUnlockRandom}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            <Sparkles size={18} />
-            Mở Khóa Ngẫu Nhiên ({RANDOM_HOOK_UNLOCK_PRICE}đ)
-          </button>
-        </div>
-      </section>
+        {/* Bottom UNLOCK RANDOM Pill Button */}
+        <button
+          type="button"
+          disabled={allUnlocked || save.money < RANDOM_HOOK_UNLOCK_PRICE}
+          onClick={handleUnlockRandom}
+          className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white font-black text-sm tracking-wide flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-amber-300/40 cursor-pointer"
+        >
+          <Coins size={18} className="text-yellow-300" />
+          <span>MỞ KHÓA NGẪU NHIÊN ({RANDOM_HOOK_UNLOCK_PRICE}đ)</span>
+        </button>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,6 @@ interface Props {
   muted: boolean;
   showDashboard: boolean;
   onToggleMute: () => void;
-  onPlay: () => void;
   onOpenDashboard: () => void;
   onCloseDashboard: () => void;
 }
@@ -18,8 +17,6 @@ export function HomeScreen({
   muted,
   showDashboard,
   onToggleMute,
-  onPlay,
-  onOpenDashboard,
   onCloseDashboard,
 }: Props) {
   return (
@@ -27,8 +24,6 @@ export function HomeScreen({
       <FishingDockScreen
         muted={muted}
         onToggleMute={onToggleMute}
-        onPlay={onPlay}
-        onShowStats={onOpenDashboard}
       />
       <DashboardPanel
         open={showDashboard}

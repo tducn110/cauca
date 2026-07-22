@@ -1,4 +1,4 @@
-import { Fish, Sparkles, X, Shield, Star, HelpCircle } from "lucide-react";
+import { Fish, Sparkles, X, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { FISH_KINDS } from "../game/fish-data";
 import { loadSave } from "../game/storage";

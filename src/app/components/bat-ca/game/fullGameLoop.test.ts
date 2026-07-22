@@ -14,8 +14,7 @@ import {
   claimOfflineEarnings,
   normalizeSave,
 } from "./storage";
-import { HOOK_DEFINITIONS, RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
-import { FISH_KINDS } from "./fish-data";
+import { RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
 
 // Setup memory storage for vitest node env
 class MemoryStorage implements Storage {

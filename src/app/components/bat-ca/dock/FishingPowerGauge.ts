@@ -124,4 +124,17 @@ export class FishingPowerGauge extends Container {
     this.cursor = disabled ? "default" : "pointer";
     this.alpha = disabled ? 0.66 : 1;
   }
+
+  /** Re-arms the gauge so the player can cast again after a round ends. */
+  reset(): void {
+    this.locked = false;
+    this.feedbackTime = 0;
+    this.idleTime = 0;
+    this.glow.alpha = 0;
+    this.dial.scale.set(this.dialBaseScale.x, this.dialBaseScale.y);
+  }
+
+  get isLocked(): boolean {
+    return this.locked;
+  }
 }
