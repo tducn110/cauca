@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Anchor, Fish, Gauge, Maximize2, Trophy, Volume2, VolumeX, X } from "lucide-react";
 import { gameAudio } from "../../../audio/audioManager";
 import { DEPTH_UPGRADE_DELTA, INITIAL_CAPACITY, INITIAL_MAX_DEPTH } from "../game/constants";
 import { UPGRADE_META } from "../game/fish-data";
@@ -12,9 +11,14 @@ import {
 } from "./dockLayout";
 import { useDockProgression } from "./useDockProgression";
 import type { DockUpgradeType } from "./progression";
+import { HooksPanel } from "./HooksPanel";
+import { SettingsModal } from "./SettingsModal";
+import { AquariumPanel } from "./AquariumPanel";
+import { OfflineEarningsModal } from "./OfflineEarningsModal";
+import { calculateOfflineEarnings } from "../game/storage";
 import "./fishing-dock-screen.css";
 
-type DockPanel = "settings" | "hooks" | null;
+type DockPanel = "settings" | "hooks" | "aquarium" | null;
 
 type Props = {
   muted: boolean;
@@ -41,16 +45,24 @@ function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
 export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: Props) {
   const progression = useDockProgression();
   const screenRef = useRef<HTMLElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
-  const panelOpenerRef = useRef<HTMLElement | null>(null);
-  const restorePanelFocusRef = useRef(true);
   const [layout, setLayout] = useState(() => createDockLayout());
   const [panel, setPanel] = useState<DockPanel>(null);
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
+  const [offlineEarningsData, setOfflineEarningsData] = useState<{ amount: number; eligibleMinutes: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [launchResult, setLaunchResult] = useState<PowerLockResult | null>(null);
   const launchTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const launching = launchResult !== null;
+
+  // Check offline earnings on mount
+  useEffect(() => {
+    const offline = calculateOfflineEarnings();
+    if (offline.amount > 0 && offline.eligibleMinutes >= 1) {
+      setOfflineEarningsData({ amount: offline.amount, eligibleMinutes: offline.eligibleMinutes });
+      setShowOfflineModal(true);
+    }
+  }, []);
 
   useLayoutEffect(() => {
     const screen = screenRef.current;
@@ -79,8 +91,6 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
     const resizeObserver = new ResizeObserver(scheduleLayout);
     resizeObserver.observe(screen);
     window.visualViewport?.addEventListener("resize", scheduleLayout);
-    // useLayoutEffect runs before paint, so the initial DOM variables and the
-    // Pixi scene start from the same measured viewport rather than 1280x720.
     commitLayout();
 
     return () => {
@@ -103,58 +113,6 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
       noticeTimerRef.current = null;
     }, 1_800);
   };
-
-  useEffect(() => {
-    const claim = progression.lastOfflineClaim;
-    if (claim?.claimed) showNotice(`Đã nhận ${claim.amount.toLocaleString("vi-VN")}đ khi vắng mặt`);
-    // Only react to a newly completed automatic claim.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [progression.lastOfflineClaim]);
-
-  useEffect(() => {
-    if (!panel) return;
-    const previouslyFocused = panelOpenerRef.current;
-    const focusFrame = window.requestAnimationFrame(() => {
-      panelRef.current?.querySelector<HTMLElement>(
-        "button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])",
-      )?.focus();
-    });
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setPanel(null);
-        return;
-      }
-      if (event.key !== "Tab" || !panelRef.current) return;
-
-      const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(
-        "button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])",
-      ));
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const focusOutside = !panelRef.current.contains(document.activeElement);
-      if (event.shiftKey && (document.activeElement === first || focusOutside)) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || focusOutside)) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      window.removeEventListener("keydown", onKeyDown);
-      if (restorePanelFocusRef.current && previouslyFocused?.isConnected) previouslyFocused.focus();
-      panelOpenerRef.current = null;
-      restorePanelFocusRef.current = true;
-    };
-  }, [panel]);
 
   useEffect(() => {
     return () => {
@@ -210,13 +168,13 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
   };
 
   const lockPower = (result: PowerLockResult) => {
-    if (launching || panel) return;
+    if (launching || panel !== null || showOfflineModal) return;
     setLaunchResult(result);
     gameAudio.play(result.label === "MAX" ? "level" : "click");
     try {
       sessionStorage.setItem("batca-cast-power", String(result.power));
     } catch {
-      // Session storage can be unavailable in embedded/private contexts.
+      // Session storage can be unavailable in embedded contexts.
     }
     launchTimerRef.current = window.setTimeout(() => {
       launchTimerRef.current = null;
@@ -224,14 +182,7 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
     }, 720);
   };
 
-  const toggleFullscreen = async () => {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
-    } catch {
-      showNotice("Trình duyệt không hỗ trợ toàn màn hình");
-    }
-  };
+  const isInteractionLocked = launching || panel !== null || showOfflineModal;
 
   return (
     <main
@@ -244,7 +195,7 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
       <FishingDockCanvas
         layout={layout}
         onPowerLock={lockPower}
-        disabled={launching || panel !== null}
+        disabled={isInteractionLocked}
       />
       <DockHud
         earnings={progression.earnings}
@@ -254,23 +205,19 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
         upgrades={upgrades}
         onOpenSettings={() => {
           gameAudio.play("click");
-          panelOpenerRef.current = document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null;
-          restorePanelFocusRef.current = true;
           setPanel("settings");
         }}
         onOpenHooks={() => {
           gameAudio.play("click");
-          panelOpenerRef.current = document.activeElement instanceof HTMLElement
-            ? document.activeElement
-            : null;
-          restorePanelFocusRef.current = true;
           setPanel("hooks");
+        }}
+        onOpenAquarium={() => {
+          gameAudio.play("click");
+          setPanel("aquarium");
         }}
         onClaimGift={claimGift}
         onBuyUpgrade={buyUpgrade}
-        interactionLocked={launching || panel !== null}
+        interactionLocked={isInteractionLocked}
       />
 
       {notice && <div className="fishing-dock-screen__notice" role="status">{notice}</div>}
@@ -280,71 +227,27 @@ export function FishingDockScreen({ muted, onToggleMute, onPlay, onShowStats }: 
         </div>
       )}
 
-      {panel && (
-        <div className="fishing-dock-screen__backdrop" onClick={() => setPanel(null)}>
-          <section
-            ref={panelRef}
-            className="fishing-dock-screen__panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dock-panel-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="fishing-dock-screen__close"
-              onClick={() => setPanel(null)}
-              aria-label="Đóng"
-            >
-              <X aria-hidden="true" />
-            </button>
+      {/* Panels */}
+      {panel === "hooks" && (
+        <HooksPanel onClose={() => setPanel(null)} onNotice={showNotice} />
+      )}
 
-            {panel === "settings" ? (
-              <>
-                <h2 id="dock-panel-title">Cài đặt</h2>
-                <div className="fishing-dock-screen__actions">
-                  <button type="button" onClick={onToggleMute}>
-                    {muted ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
-                    <span>{muted ? "Bật âm thanh" : "Tắt âm thanh"}</span>
-                  </button>
-                  <button type="button" onClick={() => void toggleFullscreen()}>
-                    <Maximize2 aria-hidden="true" />
-                    <span>Toàn màn hình</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      restorePanelFocusRef.current = false;
-                      setPanel(null);
-                      onShowStats();
-                    }}
-                  >
-                    <Trophy aria-hidden="true" />
-                    <span>Thành tích</span>
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 id="dock-panel-title">Đồ nghề</h2>
-                <div className="fishing-dock-screen__gear">
-                  <span className="fishing-dock-screen__gear-icon"><Anchor aria-hidden="true" /></span>
-                  <div>
-                    <strong>Lưỡi câu ao làng</strong>
-                    <span>Cấp {progression.capacityLevel + 1}</span>
-                  </div>
-                </div>
-                <div className="fishing-dock-screen__gear-stats">
-                  <span><Fish aria-hidden="true" /> {INITIAL_CAPACITY + progression.capacityLevel * 2} cá</span>
-                  <span><Gauge aria-hidden="true" /> {INITIAL_MAX_DEPTH + progression.depthLevel * DEPTH_UPGRADE_DELTA}m</span>
-                </div>
-                <button type="button" className="fishing-dock-screen__primary" onClick={() => setPanel(null)}>
-                  Tiếp tục
-                </button>
-              </>
-            )}
-          </section>
-        </div>
+      {panel === "settings" && (
+        <SettingsModal muted={muted} onToggleMute={onToggleMute} onClose={() => setPanel(null)} />
+      )}
+
+      {panel === "aquarium" && (
+        <AquariumPanel onClose={() => setPanel(null)} />
+      )}
+
+      {/* Offline Earnings Modal */}
+      {showOfflineModal && offlineEarningsData && (
+        <OfflineEarningsModal
+          amount={offlineEarningsData.amount}
+          eligibleMinutes={offlineEarningsData.eligibleMinutes}
+          onClose={() => setShowOfflineModal(false)}
+          onClaimed={(claimedAmount) => showNotice(`Đã nhận +${claimedAmount.toLocaleString("vi-VN")}đ`)}
+        />
       )}
     </main>
   );

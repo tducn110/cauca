@@ -1,6 +1,7 @@
 import { useBatCaGame, type EndGameData } from "./hooks/useBatCaGame";
 import { GameCanvas } from "./GameCanvas";
 import { TutorialOverlay, GameplayHud, UpgradePanel, ShopPanel, RoundFeedback, LevelSummary } from "./ui";
+import { CatchResultScreen } from "./ui/CatchResultScreen";
 import { ArrowLeft } from "lucide-react";
 import "./batca.css";
 
@@ -23,6 +24,7 @@ export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
     lastFeedback,
     hasAffordableUpgrade,
     canOpenUpgrade,
+    newlyDiscovered,
     refresh,
     onHud,
     play,
@@ -76,7 +78,19 @@ export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
             <TutorialOverlay onReady={play} />
           )}
 
-          {(mode === "playing" || mode === "result") && lastFeedback && (
+          {mode === "result" && lastFeedback && (
+            <CatchResultScreen
+              earned={lastFeedback.earned}
+              totalFishCaught={lastFeedback.items.filter((i) => !i.isBad).length}
+              caughtItems={lastFeedback.items}
+              newlyDiscovered={newlyDiscovered}
+              isNewBest={lastFeedback.earned > hud.bestMoney}
+              bestScore={hud.bestMoney}
+              onContinue={endGame}
+            />
+          )}
+
+          {mode === "playing" && lastFeedback && (
             <RoundFeedback feedback={lastFeedback} onDone={dismissFeedback} />
           )}
 

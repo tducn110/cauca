@@ -109,10 +109,22 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
     force((n) => n + 1);
   }, [game]);
 
+  const [newlyDiscovered, setNewlyDiscovered] = useState<string[]>([]);
+
   const onSell = useCallback((summary: CaughtSummary) => {
     gameAudio.play(summary.earned > 0 ? "sell" : "click");
     setLastFeedback(summary);
     setHud(game.hud());
+
+    // Record newly discovered fish for Aquarium
+    const caughtFishTypes = summary.items.map((item) => {
+      // Find matching type from FISH_KINDS by name
+      const kind = game.carrying.find((f) => f.kind.name === item.name)?.kind;
+      return kind ? kind.type : "";
+    }).filter(Boolean);
+
+    const newTypes = recordDiscoveredFish(caughtFishTypes);
+    setNewlyDiscovered(newTypes);
 
     const previous = runStateRef.current;
     const fishCaught = summary.items.filter((item) => !item.isBad).length;
@@ -124,7 +136,7 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
     };
     commitRunState(next);
 
-    if (game.timeUp) {
+    if (game.timeUp || next.castsLeft <= 0) {
       const passed = next.levelScore >= getLevelDef(next.currentLevel).target;
       setGameMode("result");
       scheduleResult(() => {
@@ -133,22 +145,7 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
           gameAudio.play("level");
           setGameMode("levelSummary");
         } else {
-          finishRun("time-out", next);
-        }
-      });
-      return;
-    }
-
-    if (next.castsLeft <= 0) {
-      const passed = next.levelScore >= getLevelDef(next.currentLevel).target;
-      setGameMode("result");
-      scheduleResult(() => {
-        if (endedRef.current) return;
-        if (passed) {
-          gameAudio.play("level");
-          setGameMode("levelSummary");
-        } else {
-          finishRun("target-not-reached", next);
+          finishRun(game.timeUp ? "time-out" : "target-not-reached", next);
         }
       });
       return;
@@ -156,6 +153,7 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
 
     setGameMode("playing");
   }, [commitRunState, finishRun, game, scheduleResult, setGameMode]);
+
 
   useEffect(() => {
     game.onSell = onSell;
@@ -279,5 +277,7 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
     closeShop,
     useDynamite,
     dismissFeedback,
+    newlyDiscovered,
   };
 }
+

@@ -3,6 +3,7 @@ import {
   ArrowDownToLine,
   ArrowUp,
   CircleDollarSign,
+  Fish,
   Gift,
   PackageOpen,
   Settings,
@@ -33,12 +34,14 @@ export interface DockHudProps {
   upgrades: DockUpgradeMap;
   onOpenSettings: () => void;
   onOpenHooks: () => void;
+  onOpenAquarium: () => void;
   onClaimGift: () => void;
   onBuyUpgrade: (upgrade: DockUpgradeId) => void;
   interactionLocked?: boolean;
   className?: string;
   currencySuffix?: string;
 }
+
 
 const UPGRADE_ORDER: readonly DockUpgradeId[] = ["capacity", "depth", "offlineRate"];
 
@@ -158,6 +161,19 @@ export function DockHud({
         </button>
 
         <button
+          className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
+          type="button"
+          onClick={onOpenAquarium}
+          disabled={interactionLocked}
+          aria-label="Mở Thủy cung"
+          title="Thủy cung"
+        >
+          <Fish aria-hidden="true" strokeWidth={2.8} />
+          <span>Thủy cung</span>
+          <small>Bộ sưu tập</small>
+        </button>
+
+        <button
           className={joinClassNames(
             "fishing-dock-hud__rail-button",
             "fishing-dock-hud__gift",
@@ -175,6 +191,7 @@ export function DockHud({
           <small>{giftReady ? "Sẵn sàng" : formatCooldown(giftRemainingMs)}</small>
         </button>
       </nav>
+
 
       <div
         className="fishing-dock-hud__upgrades"

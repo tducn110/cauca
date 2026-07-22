@@ -6,9 +6,12 @@ import {
   INITIAL_PULL_SPEED,
 } from "./constants";
 import type { BuffState, BuffType, UpgradeType, Upgrades } from "./types";
+import { HOOK_DEFINITIONS, RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
+import { FISH_KINDS } from "./fish-data";
 
 const STORE_KEY = "batca-ao-lang-save";
 const SAVE_VERSION = 5 as const;
+
 const MAX_SAFE_SCORE = 999_999_999;
 const MAX_SAFE_BUFF_VALUE = 9_999;
 const MAX_UPGRADE_LEVEL = 5;
@@ -16,6 +19,13 @@ const MAX_OFFLINE_RATE_LEVEL = 5;
 const UPGRADE_TYPES: UpgradeType[] = ["depth", "netSize", "pullSpeed", "capacity"];
 const BUFF_TYPES: BuffType[] = ["dynamite", "strength", "time", "bigNet"];
 const SAVE_LISTENERS = new Set<(save: SaveData) => void>();
+
+export type AudioSettings = {
+  sound: boolean;
+  music: boolean;
+};
+
+export type LanguageCode = "vi" | "en";
 
 export type SaveData = {
   version: typeof SAVE_VERSION;
@@ -28,6 +38,12 @@ export type SaveData = {
   offlineRateLevel: number;
   lastActiveAt: number;
   nextGiftAt: number;
+  selectedHook: string;
+  unlockedHooks: string[];
+  discoveredFish: string[];
+  audioSettings: AudioSettings;
+  language: LanguageCode;
+  lastOfflineClaimedAt: number;
 };
 
 const EMPTY_UPGRADES: Upgrades = { depth: 0, netSize: 0, pullSpeed: 0, capacity: 0 };
@@ -58,7 +74,7 @@ function safeBuffValue(value: unknown): number {
 }
 
 function sanitizeUpgrades(value: unknown): Upgrades {
-  const candidate = value && typeof value === "object" ? value as Partial<Record<UpgradeType, unknown>> : {};
+  const candidate = value && typeof value === "object" ? (value as Partial<Record<UpgradeType, unknown>>) : {};
   return UPGRADE_TYPES.reduce<Upgrades>((result, type) => {
     result[type] = safeUpgradeLevel(candidate[type]);
     return result;
@@ -66,12 +82,44 @@ function sanitizeUpgrades(value: unknown): Upgrades {
 }
 
 function sanitizeBuffs(value: unknown): BuffState {
-  const candidate = value && typeof value === "object" ? value as Partial<Record<BuffType, unknown>> : {};
+  const candidate = value && typeof value === "object" ? (value as Partial<Record<BuffType, unknown>>) : {};
   return BUFF_TYPES.reduce<BuffState>((result, type) => {
     const amount = safeBuffValue(candidate[type]);
     if (amount > 0) result[type] = amount;
     return result;
   }, {});
+}
+
+function sanitizeUnlockedHooks(value: unknown): string[] {
+  const validIds = new Set(HOOK_DEFINITIONS.map((h) => h.id));
+  const list = Array.isArray(value) ? value : ["classic"];
+  const set = new Set<string>();
+  set.add("classic");
+  for (const item of list) {
+    if (typeof item === "string" && validIds.has(item)) {
+      set.add(item);
+    }
+  }
+  return Array.from(set);
+}
+
+function sanitizeSelectedHook(value: unknown, unlocked: string[]): string {
+  if (typeof value === "string" && unlocked.includes(value)) {
+    return value;
+  }
+  return unlocked[0] || "classic";
+}
+
+function sanitizeDiscoveredFish(value: unknown): string[] {
+  const validTypes = new Set(FISH_KINDS.map((f) => f.type));
+  const list = Array.isArray(value) ? value : [];
+  const set = new Set<string>();
+  for (const item of list) {
+    if (typeof item === "string" && validTypes.has(item)) {
+      set.add(item);
+    }
+  }
+  return Array.from(set);
 }
 
 function inferLevel(value: unknown, bases: number[], delta: number): number {
@@ -95,7 +143,6 @@ function migrateUpgrades(parsed: Record<string, unknown>): Upgrades {
     return sanitizeUpgrades(parsed.upgrades);
   }
   return {
-    // Hai bản export trước từng dùng mốc 180m và 550m.
     depth: inferLevel(parsed.maxDepth, [INITIAL_MAX_DEPTH, 180], DEPTH_UPGRADE_DELTA),
     netSize: inferLevel(parsed.netSize, [INITIAL_NET_SIZE], 8),
     pullSpeed: inferLevel(parsed.pullSpeed, [INITIAL_PULL_SPEED], 50),
@@ -103,8 +150,18 @@ function migrateUpgrades(parsed: Record<string, unknown>): Upgrades {
   };
 }
 
-function normalizeSave(value: unknown, now = Date.now()): SaveData {
-  const parsed = value && typeof value === "object" ? value as Record<string, unknown> : {};
+export function normalizeSave(value: unknown, now = Date.now()): SaveData {
+  const parsed = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const unlockedHooks = sanitizeUnlockedHooks(parsed.unlockedHooks);
+  const selectedHook = sanitizeSelectedHook(parsed.selectedHook, unlockedHooks);
+  const discoveredFish = sanitizeDiscoveredFish(parsed.discoveredFish);
+
+  const audioObj = parsed.audioSettings && typeof parsed.audioSettings === "object" ? (parsed.audioSettings as Record<string, unknown>) : {};
+  const sound = typeof audioObj.sound === "boolean" ? audioObj.sound : true;
+  const music = typeof audioObj.music === "boolean" ? audioObj.music : true;
+
+  const language: LanguageCode = parsed.language === "en" ? "en" : "vi";
+
   return {
     version: SAVE_VERSION,
     money: safeScore(parsed.money),
@@ -116,6 +173,12 @@ function normalizeSave(value: unknown, now = Date.now()): SaveData {
     offlineRateLevel: safeOfflineRateLevel(parsed.offlineRateLevel),
     lastActiveAt: safeTimestamp(parsed.lastActiveAt, now),
     nextGiftAt: safeTimestamp(parsed.nextGiftAt, 0),
+    selectedHook,
+    unlockedHooks,
+    discoveredFish,
+    audioSettings: { sound, music },
+    language,
+    lastOfflineClaimedAt: safeTimestamp(parsed.lastOfflineClaimedAt, 0),
   };
 }
 
@@ -161,11 +224,6 @@ export function saveWallet(money: number, bestMoney: number): void {
   });
 }
 
-/** @deprecated Use saveWallet when both wallet values are available. */
-export function saveBest(bestMoney: number): void {
-  saveProgress({ bestMoney: safeScore(bestMoney) });
-}
-
 export function saveRunResult(score: number): { bestRunScore: number; lastRunScore: number; isNewBest: boolean } {
   const current = loadSave();
   const lastRunScore = safeScore(score);
@@ -173,4 +231,101 @@ export function saveRunResult(score: number): { bestRunScore: number; lastRunSco
   const bestRunScore = Math.max(current.bestRunScore, lastRunScore);
   saveProgress({ bestRunScore, lastRunScore });
   return { bestRunScore, lastRunScore, isNewBest };
+}
+
+// --- Hook Unlocks & Equipping ---
+export function selectHook(hookId: string): boolean {
+  const save = loadSave();
+  if (save.unlockedHooks.includes(hookId)) {
+    saveProgress({ selectedHook: hookId });
+    return true;
+  }
+  return false;
+}
+
+export function unlockRandomHook(): { success: boolean; unlockedHookId?: string; reason?: "insufficient-funds" | "all-unlocked" } {
+  const save = loadSave();
+  const locked = HOOK_DEFINITIONS.filter((h) => !save.unlockedHooks.includes(h.id));
+  if (locked.length === 0) {
+    return { success: false, reason: "all-unlocked" };
+  }
+  if (save.money < RANDOM_HOOK_UNLOCK_PRICE) {
+    return { success: false, reason: "insufficient-funds" };
+  }
+
+  const chosenIndex = Math.floor(Math.random() * locked.length);
+  const chosen = locked[chosenIndex];
+  const newUnlocked = [...save.unlockedHooks, chosen.id];
+  const newMoney = save.money - RANDOM_HOOK_UNLOCK_PRICE;
+
+  saveProgress({
+    money: newMoney,
+    unlockedHooks: newUnlocked,
+    selectedHook: chosen.id,
+  });
+
+  return { success: true, unlockedHookId: chosen.id };
+}
+
+// --- Fish Discovery for Aquarium ---
+export function recordDiscoveredFish(fishTypes: string[]): string[] {
+  const save = loadSave();
+  const newlyDiscovered: string[] = [];
+  const currentSet = new Set(save.discoveredFish);
+
+  for (const type of fishTypes) {
+    if (!currentSet.has(type)) {
+      currentSet.add(type);
+      newlyDiscovered.push(type);
+    }
+  }
+
+  if (newlyDiscovered.length > 0) {
+    saveProgress({ discoveredFish: Array.from(currentSet) });
+  }
+
+  return newlyDiscovered;
+}
+
+// --- Offline Income Calculation & Single Credit ---
+export function calculateOfflineEarnings(now = Date.now()): { eligibleMinutes: number; amount: number; lastActive: number } {
+  const save = loadSave();
+  const lastActive = save.lastActiveAt;
+  const elapsedMs = now - lastActive;
+
+  if (elapsedMs < 60_000) {
+    return { eligibleMinutes: 0, amount: 0, lastActive };
+  }
+
+  const maxOfflineMinutes = 8 * 60; // 8 hours max cap
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+  const eligibleMinutes = Math.min(maxOfflineMinutes, elapsedMinutes);
+
+  // Rate per minute = 5 coins * (offlineRateLevel + 1)
+  const ratePerMinute = (save.offlineRateLevel + 1) * 5;
+  const amount = eligibleMinutes * ratePerMinute;
+
+  return { eligibleMinutes, amount, lastActive };
+}
+
+export function claimOfflineEarnings(now = Date.now()): { claimed: boolean; amount: number } {
+  const save = loadSave();
+  // Prevent duplicate credit if already claimed recently
+  if (save.lastOfflineClaimedAt && now - save.lastOfflineClaimedAt < 60_000) {
+    return { claimed: false, amount: 0 };
+  }
+
+  const { amount } = calculateOfflineEarnings(now);
+  if (amount <= 0) {
+    saveProgress({ lastActiveAt: now, lastOfflineClaimedAt: now });
+    return { claimed: false, amount: 0 };
+  }
+
+  saveProgress({
+    money: save.money + amount,
+    lastActiveAt: now,
+    lastOfflineClaimedAt: now,
+  });
+
+  return { claimed: true, amount };
 }
