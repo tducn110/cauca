@@ -13,6 +13,7 @@ export type FishKind = {
   weight: number;
   depthMin: number;
   depthMax: number;
+  minLevel?: number;
   speed: number;
   size: number;
   rarity: number;
@@ -79,6 +80,8 @@ export type Input = {
   pointerX: number;
   pointerY: number;
   deltaY: number;
+  gestureStartY: number;
+  gestureDeltaY: number;
   justPressed: boolean;
   justReleased: boolean;
   hasPointer: boolean;
@@ -101,6 +104,8 @@ export type HudSnapshot = {
 
 export type GameState = {
   mode: GameMode;
+  level: number;
+  levelBottomY: number;
   stats: PlayerStats;
   upgrades: Upgrades;
   fish: Fish[];
@@ -116,4 +121,5 @@ export type GameState = {
   combo: ComboState;
   activeBuffs: BuffState;
   nextLevelBuffs: BuffState;
+  cameraY: number;
 };

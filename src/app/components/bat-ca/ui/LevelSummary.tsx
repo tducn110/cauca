@@ -30,15 +30,15 @@ export function LevelSummary({
   const hasBuffs = Object.keys(nextLevelBuffs).length > 0;
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(42,36,24,0.7)] backdrop-blur-sm">
-      <div className="bg-cream-card rounded-3xl p-6 max-w-[360px] w-[90%] shadow-2xl text-center">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(42,36,24,0.7)] backdrop-blur-sm p-3">
+      <div className="bg-cream-card rounded-3xl p-6 max-w-[360px] w-[90%] max-h-full overflow-y-auto shadow-2xl text-center" role="dialog" aria-modal="true" aria-labelledby="batca-level-summary-title">
         {/* Header */}
         <div className="mb-4">
           <div className="inline-flex items-center gap-1.5 bg-bamboo-green text-white text-xs font-bold px-3 py-1 rounded-full mb-2">
             <Trophy size={14} />
             Hoàn thành!
           </div>
-          <h2 className="text-2xl font-extrabold text-ink-dark">
+          <h2 id="batca-level-summary-title" className="text-2xl font-extrabold text-ink-dark">
             Level {levelDef.level} ✓
           </h2>
         </div>

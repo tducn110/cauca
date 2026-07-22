@@ -1,5 +1,5 @@
 // Engine cho game "Bắt Cá Ao Làng"
-// Render bằng HTML5 Canvas, không backend, logic thuần để dễ test & ổn định.
+// Render bằng PixiJS, không backend, logic thuần để dễ test và ổn định.
 
 import { LOGICAL_WIDTH, SURFACE_Y } from "./game/constants";
 import { createInitialState } from "./game/createInitialState";
@@ -7,6 +7,8 @@ import { updateGame } from "./game/updateGame";
 import { UPGRADE_DEFS, upgradeCost } from "./game/upgrades";
 import { applyLevelStartBuffs, buyBuff, useDynamite } from "./game/buffs";
 import { loadSave, saveProgress } from "./game/storage";
+import { createStartingFish } from "./game/fishSystem";
+import { getLevelBottomY, getLevelDef, type LevelDef } from "./game/levels";
 import type {
   BuffState,
   BuffType,
@@ -25,7 +27,7 @@ import type {
   Upgrades,
 } from "./game/types";
 
-export { BOTTOM_Y, LOGICAL_HEIGHT, LOGICAL_WIDTH, SURFACE_Y } from "./game/constants";
+export { LOGICAL_HEIGHT, LOGICAL_WIDTH, SURFACE_Y } from "./game/constants";
 export { UPGRADE_DEFS, upgradeCost } from "./game/upgrades";
 export { BUFF_DEFS } from "./game/buffs";
 export type {
@@ -35,7 +37,6 @@ export type {
   ComboState,
   FeedbackText,
   Fish,
-  FishKind,
   GameMode,
   HudSnapshot,
   Input,
@@ -53,6 +54,8 @@ export const EMPTY_INPUT: Input = {
   pointerX: LOGICAL_WIDTH / 2,
   pointerY: SURFACE_Y,
   deltaY: 0,
+  gestureStartY: SURFACE_Y,
+  gestureDeltaY: 0,
   justPressed: false,
   justReleased: false,
   hasPointer: false,
@@ -60,6 +63,8 @@ export const EMPTY_INPUT: Input = {
 
 export class Game implements GameState {
   mode: GameMode = "start";
+  level = 1;
+  levelBottomY = SURFACE_Y;
   stats: PlayerStats;
   upgrades: Upgrades = { depth: 0, netSize: 0, pullSpeed: 0, capacity: 0 };
   fish: Fish[] = [];
@@ -76,12 +81,15 @@ export class Game implements GameState {
   combo: ComboState = { count: 0, species: null };
   activeBuffs: BuffState = {};
   nextLevelBuffs: BuffState = {};
+  cameraY = 0;
 
   onSell?: (summary: CaughtSummary) => void;
 
   constructor() {
     const initial = createInitialState();
     this.mode = initial.mode;
+    this.level = initial.level;
+    this.levelBottomY = initial.levelBottomY;
     this.stats = initial.stats;
     this.upgrades = initial.upgrades;
     this.net = initial.net;
@@ -97,12 +105,15 @@ export class Game implements GameState {
     this.combo = initial.combo;
     this.activeBuffs = initial.activeBuffs;
     this.nextLevelBuffs = initial.nextLevelBuffs;
+    this.cameraY = initial.cameraY;
   }
 
-  reset() {
+  reset(levelDef: LevelDef = getLevelDef(1)) {
     const save = loadSave();
-    const initial = createInitialState(save);
+    const initial = createInitialState(save, levelDef);
     this.mode = "playing";
+    this.level = initial.level;
+    this.levelBottomY = initial.levelBottomY;
     this.stats = initial.stats;
     this.upgrades = initial.upgrades;
     this.net = initial.net;
@@ -118,14 +129,18 @@ export class Game implements GameState {
     this.combo = initial.combo;
     this.activeBuffs = initial.activeBuffs;
     this.nextLevelBuffs = initial.nextLevelBuffs;
+    this.cameraY = initial.cameraY;
   }
 
-  startLevel(timeLeft: number) {
+  startLevel(levelDef: LevelDef) {
     const save = loadSave();
-    const fresh = createInitialState(save);
+    const fresh = createInitialState(save, levelDef);
+    const pendingBuffs = { ...this.nextLevelBuffs };
     // Giữ tiền, chỉ số và nâng cấp đã mua; reset trạng thái màn chơi
     const { stats, upgrades } = this;
-    this.fish = fresh.fish;
+    this.level = levelDef.level;
+    this.levelBottomY = getLevelBottomY(levelDef, stats.maxDepth);
+    this.fish = createStartingFish(this.levelBottomY, 0, this.level);
     this.net = { ...fresh.net };
     this.carrying = fresh.carrying;
     this.feedback = fresh.feedback;
@@ -133,15 +148,17 @@ export class Game implements GameState {
     this.lastCatchValue = fresh.lastCatchValue;
     this.lastSummary = fresh.lastSummary;
     this.shake = fresh.shake;
-    this.levelTimeLeft = timeLeft;
+    this.levelTimeLeft = levelDef.time;
     this.timeUp = false;
     this.combo = { count: 0, species: null };
-    this.activeBuffs = fresh.activeBuffs;
-    this.nextLevelBuffs = fresh.nextLevelBuffs;
+    this.activeBuffs = {};
+    this.nextLevelBuffs = pendingBuffs;
+    this.cameraY = 0;
     this.stats = stats;
     this.upgrades = upgrades;
     this.mode = "playing";
     applyLevelStartBuffs(this);
+    this.saveStats();
   }
 
   buyUpgrade(type: UpgradeType): boolean {
@@ -153,25 +170,29 @@ export class Game implements GameState {
     this.stats.money -= cost;
     this.upgrades[type] = lvl + 1;
     def.apply(this.stats);
+    if (type === "depth") {
+      this.levelBottomY = getLevelBottomY(getLevelDef(this.level), this.stats.maxDepth);
+      if (this.net.state === "idle") {
+        this.fish = createStartingFish(this.levelBottomY, this.cameraY, this.level);
+      }
+    }
     this.saveStats();
     return true;
   }
 
   saveStats() {
     saveProgress({
-      maxDepth: Math.round(this.stats.maxDepth - SURFACE_Y),
-      netSize: this.stats.netSize,
-      pullSpeed: this.stats.pullSpeed,
-      capacity: this.stats.capacity,
+      money: this.stats.money,
+      bestMoney: this.stats.bestMoney,
+      upgrades: { ...this.upgrades },
+      pendingBuffs: { ...this.nextLevelBuffs },
     });
   }
 
-  saveLevel(level: number) {
-    saveProgress({ currentLevel: level });
-  }
-
   buyBuff(type: BuffType): boolean {
-    return buyBuff(this, type);
+    const purchased = buyBuff(this, type);
+    if (purchased) this.saveStats();
+    return purchased;
   }
 
   useDynamite(): boolean {
@@ -211,7 +232,7 @@ export class Game implements GameState {
       money: Math.round(this.stats.money),
       bestMoney: Math.round(this.stats.bestMoney),
       depth: Math.round(this.net.y - SURFACE_Y),
-      maxDepth: Math.round(this.stats.maxDepth - SURFACE_Y),
+      maxDepth: Math.round(this.levelBottomY - SURFACE_Y),
       carrying: this.carrying.length,
       capacity: this.stats.capacity,
       lastCatchValue: Math.round(this.lastCatchValue),

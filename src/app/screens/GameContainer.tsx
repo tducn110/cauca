@@ -1,14 +1,27 @@
 import { BatCaAoLang } from "../components/bat-ca/BatCaAoLang";
 import type { EndGameData } from "../components/bat-ca/hooks/useBatCaGame";
-import { ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface Props {
   onEndGame: (data: EndGameData) => void;
 }
 
+function consumeCastPower(): number {
+  try {
+    const rawValue = sessionStorage.getItem("batca-cast-power");
+    sessionStorage.removeItem("batca-cast-power");
+    if (rawValue === null) return 0.6;
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? Math.min(1, Math.max(0.2, value)) : 0.6;
+  } catch {
+    return 0.6;
+  }
+}
+
 export function GameContainer({ onEndGame }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [castPower] = useState(consumeCastPower);
 
   useEffect(() => {
     const handler = () => setIsFullscreen(!!document.fullscreenElement);
@@ -18,6 +31,7 @@ export function GameContainer({ onEndGame }: Props) {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
+      if (!document.documentElement.requestFullscreen) return;
       document.documentElement.requestFullscreen().catch(() => {
         // ignore
       });
@@ -33,24 +47,15 @@ export function GameContainer({ onEndGame }: Props) {
       <div className="game-shell-bg" />
       <div className="game-frame">
         <button
-          onClick={() => onEndGame({ totalScore: 0, totalFishCaught: 0, levelReached: 1, reason: "quit" })}
-          className="absolute top-3 left-3 sm:top-4 sm:left-4 z-50 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full bg-[rgba(255,255,255,0.9)] border border-pencil text-ink-dark font-extrabold text-[13px] cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
-          aria-label="Về trang chủ"
-        >
-          <ArrowLeft size={18} className="sm:hidden" />
-          <span className="hidden sm:inline">↩ Về trang chủ</span>
-        </button>
-
-        <button
           onClick={toggleFullscreen}
-          className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50 w-10 h-10 rounded-full bg-[rgba(255,255,255,0.9)] border border-pencil text-ink-dark font-extrabold cursor-pointer flex items-center justify-center shadow-md"
+          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[4] w-10 h-10 rounded-full bg-[rgba(255,255,255,0.9)] border border-pencil text-ink-dark font-extrabold cursor-pointer flex items-center justify-center shadow-md"
           aria-label={isFullscreen ? "Thoát fullscreen" : "Fullscreen"}
           title={isFullscreen ? "Thoát fullscreen" : "Fullscreen"}
         >
           {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
         </button>
 
-        <BatCaAoLang onEndGame={onEndGame} />
+        <BatCaAoLang onEndGame={onEndGame} initialCastPower={castPower} />
       </div>
     </div>
   );

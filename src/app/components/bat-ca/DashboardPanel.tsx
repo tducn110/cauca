@@ -1,4 +1,5 @@
 import { X, Trophy, BarChart3 } from "lucide-react";
+import { useEffect } from "react";
 
 interface Props {
   open: boolean;
@@ -8,6 +9,15 @@ interface Props {
 }
 
 export function DashboardPanel({ open, onClose, bestScore, lastScore }: Props) {
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, open]);
+
   if (!open) return null;
 
   return (
@@ -19,12 +29,13 @@ export function DashboardPanel({ open, onClose, bestScore, lastScore }: Props) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="dashboard-container w-full max-w-[400px] bg-cream-card rounded-3xl border border-[rgba(138,125,101,0.4)] p-7 shadow-[0_20px_60px_rgba(42,36,24,0.3)] relative text-center"
+        className="dashboard-container w-full max-w-[400px] max-h-[calc(100dvh-40px)] overflow-y-auto bg-cream-card rounded-3xl border border-[rgba(138,125,101,0.4)] p-7 shadow-[0_20px_60px_rgba(42,36,24,0.3)] relative text-center"
       >
         <button
           type="button"
           onClick={onClose}
           className="game-btn-close absolute top-3.5 right-3.5"
+          aria-label="Đóng bảng thành tích"
         >
           <X size={18} />
         </button>

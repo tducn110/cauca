@@ -1,0 +1,58 @@
+{
+  "assetVersion": 2,
+  "fixes": [
+    "Removed torn/jagged side artifacts caused by automatic background removal",
+    "Rebuilt transparency with a geometric mask",
+    "Added 1x and 2x exports",
+    "Centered the visual pivot exactly at the image center"
+  ],
+  "dial": {
+    "files": {
+      "1x": "assets/dial_base.png",
+      "2x": "assets/dial_base@2x.png"
+    },
+    "sizes": {
+      "1x": [
+        640,
+        640
+      ],
+      "2x": [
+        1280,
+        1280
+      ]
+    },
+    "anchor": [
+      0.5,
+      0.5
+    ],
+    "pivotPixels": {
+      "1x": [
+        320,
+        320
+      ],
+      "2x": [
+        640,
+        640
+      ]
+    }
+  },
+  "pointer": {
+    "files": {
+      "1x": "assets/pointer.png",
+      "2x": "assets/pointer@2x.png"
+    },
+    "baseOrientation": "points right",
+    "radiusFactor": 0.445
+  },
+  "animation": {
+    "leftMinAngleRad": 0,
+    "maxAngleRad": 1.5707963267948966,
+    "rightMinAngleRad": 3.141592653589793,
+    "defaultAngularSpeedRadPerSecond": 2.15,
+    "zonesDegreesFromMax": {
+      "MAX": 8,
+      "GREAT": 18,
+      "GOOD": 35
+    }
+  }
+}

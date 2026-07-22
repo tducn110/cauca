@@ -6,6 +6,7 @@ export type UpgradeDef = {
   type: UpgradeType;
   name: string;
   desc: string;
+  effectLabel: string;
   maxLevel: number;
   costs: number[];
   apply: (stats: PlayerStats) => void;
@@ -16,6 +17,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     type: "depth",
     name: UPGRADE_META.depth.name,
     desc: "Lưới xuống sâu hơn, gặp loài cá mới.",
+    effectLabel: "+400m độ sâu",
     maxLevel: UPGRADE_META.depth.maxLevel,
     costs: [...UPGRADE_META.depth.costs],
     apply: (s) => { s.maxDepth = Math.min(MAX_DEPTH_LIMIT, s.maxDepth + DEPTH_UPGRADE_DELTA); },
@@ -24,6 +26,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     type: "netSize",
     name: UPGRADE_META.netSize.name,
     desc: UPGRADE_META.netSize.desc,
+    effectLabel: "+8 bán kính lưới",
     maxLevel: UPGRADE_META.netSize.maxLevel,
     costs: [...UPGRADE_META.netSize.costs],
     apply: (s) => { s.netSize += 8; },
@@ -32,6 +35,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     type: "pullSpeed",
     name: UPGRADE_META.pullSpeed.name,
     desc: UPGRADE_META.pullSpeed.desc,
+    effectLabel: "+50 tốc độ kéo",
     maxLevel: UPGRADE_META.pullSpeed.maxLevel,
     costs: [...UPGRADE_META.pullSpeed.costs],
     apply: (s) => { s.pullSpeed += 50; },
@@ -40,6 +44,7 @@ export const UPGRADE_DEFS: UpgradeDef[] = [
     type: "capacity",
     name: UPGRADE_META.capacity.name,
     desc: UPGRADE_META.capacity.desc,
+    effectLabel: "+2 chỗ trong giỏ",
     maxLevel: UPGRADE_META.capacity.maxLevel,
     costs: [...UPGRADE_META.capacity.costs],
     apply: (s) => { s.capacity += 2; },
@@ -50,4 +55,3 @@ export function upgradeCost(def: UpgradeDef, currentLevel: number): number | nul
   if (currentLevel >= def.maxLevel) return null;
   return def.costs[currentLevel];
 }
-

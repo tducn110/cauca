@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fishing Power Gauge Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(#5534ef, #45d9df 52%, #1470f4 52%);
+    }
+    .stage {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .gauge {
+      --size: min(68vw, 520px);
+      position: relative;
+      width: var(--size);
+      height: var(--size);
+      user-select: none;
+      cursor: pointer;
+      filter: drop-shadow(0 16px 18px rgba(0,0,0,.2));
+    }
+    .base, .glow {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .glow {
+      opacity: 0;
+      transform: scale(1.08);
+      transition: opacity .15s;
+    }
+    .rotator {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+    }
+    .pointer {
+      position: absolute;
+      width: calc(var(--size) * .115);
+      height: calc(var(--size) * .086);
+      left: calc(var(--size) * -.445);
+      top: 0;
+      transform: translate(-50%, -50%);
+      object-fit: contain;
+    }
+    .result {
+      position: fixed;
+      left: 50%;
+      bottom: 6vh;
+      transform: translateX(-50%);
+      font-size: clamp(24px, 5vw, 54px);
+      font-weight: 1000;
+      color: white;
+      text-shadow: 0 4px 0 #16236c, 0 8px 16px rgba(0,0,0,.3);
+      min-height: 1.2em;
+    }
+    .hint {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-weight: 800;
+      background: rgba(0,0,0,.22);
+      border-radius: 999px;
+      padding: 9px 16px;
+    }
+    .gauge.max-hit .glow { opacity: .9; animation: glow .18s infinite alternate; }
+    .gauge.max-hit .base { animation: pop .2s infinite alternate; }
+    @keyframes glow { to { opacity: .45; transform: scale(1.14); } }
+    @keyframes pop { to { transform: scale(1.035); } }
+  </style>
+</head>
+<body>
+  <div class="hint">Bấm vòng tròn để khóa lực câu</div>
+  <div class="stage">
+    <div class="gauge" id="gauge" role="button" aria-label="Fishing power gauge">
+      <img class="glow" src="../assets/max_glow.png" alt="" />
+      <img class="base" src="../assets/dial_base.png" alt="" />
+      <div class="rotator" id="rotator">
+        <img class="pointer" src="../assets/pointer.png" alt="" />
+      </div>
+    </div>
+  </div>
+  <div class="result" id="result"></div>
+
+  <script>
+    const gauge = document.getElementById("gauge");
+    const rotator = document.getElementById("rotator");
+    const resultEl = document.getElementById("result");
+
+    let angle = 0;
+    let direction = 1;
+    let locked = false;
+    let last = performance.now();
+    const speed = 2.15;
+
+    function evaluate(a) {
+      const distance = Math.abs(a - Math.PI / 2);
+      const rad = d => d * Math.PI / 180;
+      if (distance <= rad(8)) return { label: "MAX", power: 1 };
+      if (distance <= rad(18)) return { label: "GREAT", power: .85 };
+      if (distance <= rad(35)) return { label: "GOOD", power: .6 };
+      return { label: "MIN", power: Math.max(.2, 1 - distance / (Math.PI / 2)) };
+    }
+
+    function frame(now) {
+      const dt = Math.min(.05, (now - last) / 1000);
+      last = now;
+
+      if (!locked) {
+        angle += direction * speed * dt;
+        if (angle >= Math.PI) { angle = Math.PI; direction = -1; }
+        if (angle <= 0) { angle = 0; direction = 1; }
+      }
+
+      rotator.style.transform = `rotate(${angle}rad)`;
+      requestAnimationFrame(frame);
+    }
+
+    function lock() {
+      if (locked) return;
+      locked = true;
+      const result = evaluate(angle);
+      resultEl.textContent = `${result.label} — ${Math.round(result.power * 100)}%`;
+
+      if (result.label === "MAX") gauge.classList.add("max-hit");
+
+      setTimeout(() => {
+        locked = false;
+        resultEl.textContent = "";
+        gauge.classList.remove("max-hit");
+      }, 900);
+    }
+
+    gauge.addEventListener("pointerdown", lock);
+    window.addEventListener("keydown", e => {
+      if (e.code === "Space" || e.code === "Enter") {
+        e.preventDefault();
+        lock();
+      }
+    });
+
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

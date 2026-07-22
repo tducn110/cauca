@@ -90,7 +90,10 @@ export function LoadingScreen({ progress, onDone, completeDelayMs = 1150, exitin
             left: `${leaf.left}%`,
             width: `${leaf.size}px`,
             height: `${leaf.size * 0.46}px`,
-            animation: `leaf-fall ${leaf.fall}s linear infinite, leaf-sway ${leaf.sway}s ease-in-out infinite`,
+            animationName: "leaf-fall, leaf-sway",
+            animationDuration: `${leaf.fall}s, ${leaf.sway}s`,
+            animationTimingFunction: "linear, ease-in-out",
+            animationIterationCount: "infinite, infinite",
             animationDelay: `${leaf.delay}s, ${leaf.delay * 0.35}s`,
             "--drift": `${leaf.drift}px`,
             "--rot": `${leaf.rot}deg`,
@@ -114,7 +117,10 @@ export function LoadingScreen({ progress, onDone, completeDelayMs = 1150, exitin
             "--r": `${leaf.rotate}deg`,
             "--burst-delay": `${leaf.delay}s`,
             "--leaf-color": leaf.color,
-            animation: complete ? `leaf-burst 1160ms cubic-bezier(.18,.72,.22,1) forwards` : "none",
+            animationName: complete ? "leaf-burst" : "none",
+            animationDuration: complete ? "1160ms" : "0s",
+            animationTimingFunction: complete ? "cubic-bezier(.18,.72,.22,1)" : "ease",
+            animationFillMode: complete ? "forwards" : "none",
             animationDelay: `${leaf.delay}s`,
           } as CSSProperties} />
         ))}

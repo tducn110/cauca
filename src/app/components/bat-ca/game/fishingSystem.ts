@@ -3,6 +3,9 @@ import { netSizeBonus, pullSpeedMult } from "./buffs";
 import { clamp, rand } from "./math";
 import type { GameState, Input, NetState } from "./types";
 
+const FORCED_RETURN_SPEED = 1200;
+const MAX_POINTER_STEP = 280;
+
 export function startDrop(net: { state: NetState; pulse: number }, addRipple: () => void, mode: string) {
   if (mode !== "playing") return false;
   if (net.state === "idle") {
@@ -48,22 +51,28 @@ export function updateNet(
   net.pulse = Math.max(0, net.pulse - dt * 4);
 
   if (net.state === "dropping") {
-    const dragBoost = input.pointerDown ? clamp((input.deltaY / Math.max(dt, 0.016)) * 0.75, 0, 360) : 0;
-    net.y += (stats.dropSpeed + dragBoost) * dt;
-    if (net.y >= stats.maxDepth) {
-      net.y = stats.maxDepth;
+    const dragStep = input.pointerDown ? clamp(input.deltaY * 2.5, 0, MAX_POINTER_STEP) : 0;
+    net.y += stats.dropSpeed * dt + dragStep;
+    if (net.y >= state.levelBottomY) {
+      net.y = state.levelBottomY;
       net.state = "pulling";
       net.tension = 1;
     }
   } else if (net.state === "pulling") {
-    if (net.stun > 0) {
+    if (state.timeUp) {
+      net.stun = 0;
+    } else if (net.stun > 0) {
       net.stun = Math.max(0, net.stun - dt);
       return null;
     }
 
-    net.y -= effectivePullSpeed(stats.pullSpeed, state) * dt;
+    const pullStep = !state.timeUp && input.pointerDown
+      ? clamp(-input.deltaY * 2.5, 0, MAX_POINTER_STEP)
+      : 0;
+    const pullSpeed = state.timeUp ? FORCED_RETURN_SPEED : effectivePullSpeed(stats.pullSpeed, state);
+    net.y -= pullSpeed * dt + pullStep;
 
-    if (carrying.length < stats.capacity) {
+    if (!state.timeUp && carrying.length < stats.capacity) {
       for (const f of fish) {
         if (f.caught) continue;
         const dx = f.x - net.x;
@@ -73,8 +82,11 @@ export function updateNet(
           f.caught = true;
           carrying.push(f);
           f.flash = 0.35;
-          combo.count += 1;
-          combo.species = f.kind.type;
+
+          if (!f.kind.isBad) {
+            combo.count += 1;
+            combo.species = f.kind.type;
+          }
           f.catchOrder = combo.count;
 
           const value = f.overrideValue ?? f.kind.value;
@@ -103,7 +115,7 @@ export function updateNet(
           addRipple(f.x, f.y, 4, 0.42);
           net.pulse = Math.max(net.pulse, 0.25);
 
-          if (combo.count > 1) {
+          if (!f.kind.isBad && combo.count > 1) {
             addFeedback(f.x, f.y - 30, `Combo x${combo.count}!`, "#e87432");
           }
 

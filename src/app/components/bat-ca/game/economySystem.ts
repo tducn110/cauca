@@ -1,5 +1,5 @@
 import { SURFACE_Y } from "./constants";
-import { saveBest } from "./storage";
+import { saveWallet } from "./storage";
 import type { CaughtSummary, ComboState, Fish, PlayerStats, UpgradeType, Upgrades } from "./types";
 import type { UpgradeDef } from "./upgrades";
 import { upgradeCost } from "./upgrades";
@@ -54,8 +54,8 @@ export function sellCatch(
   }
   if (stats.money > stats.bestMoney) {
     stats.bestMoney = stats.money;
-    saveBest(stats.bestMoney);
   }
+  saveWallet(stats.money, stats.bestMoney);
 
   const summary: CaughtSummary = {
     count: items.length,
@@ -76,4 +76,3 @@ export function sellCatch(
   carrying.length = 0;
   return summary;
 }
-

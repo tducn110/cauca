@@ -1,4 +1,5 @@
 import type { HudSnapshot } from "../engine";
+import { getDepthZoneName } from "../game/levels";
 
 interface Props {
   hud: HudSnapshot;
@@ -6,15 +7,32 @@ interface Props {
   castsPerRound: number;
   currentLevel: number;
   levelTime: number;
+  levelScore: number;
+  levelTarget: number;
   canUseDynamite: boolean;
+  canOpenUpgrade: boolean;
   onOpenUpgrade: () => void;
   onUseDynamite?: () => void;
 }
 
-export function GameplayHud({ hud, castsLeft, castsPerRound, currentLevel, levelTime, canUseDynamite, onOpenUpgrade, onUseDynamite }: Props) {
+export function GameplayHud({
+  hud,
+  castsLeft,
+  castsPerRound,
+  currentLevel,
+  levelTime,
+  levelScore,
+  levelTarget,
+  canUseDynamite,
+  canOpenUpgrade,
+  onOpenUpgrade,
+  onUseDynamite,
+}: Props) {
   const depthPct = hud.maxDepth > 0 ? Math.min(100, (hud.depth / hud.maxDepth) * 100) : 0;
   const timePct = levelTime > 0 ? Math.min(100, (hud.timeLeft / levelTime) * 100) : 0;
   const timeLow = timePct <= 20;
+  const targetPct = levelTarget > 0 ? Math.min(100, Math.max(0, (levelScore / levelTarget) * 100)) : 0;
+  const targetMet = levelScore >= levelTarget;
 
   const dynamiteCount = hud.activeBuffs.dynamite ?? 0;
   const strengthLeft = hud.activeBuffs.strength ?? 0;
@@ -44,12 +62,17 @@ export function GameplayHud({ hud, castsLeft, castsPerRound, currentLevel, level
           <div className="batca-hud-value money">{hud.money}đ</div>
           <div className="batca-weight-pill">⚖️ {hud.totalWeight}kg</div>
         </div>
-        <div className="batca-hud-pill text-right">
-          <div className="batca-hud-label">Giỏ cá</div>
-          <div className="batca-hud-value">{hud.carrying}/{hud.capacity}</div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="batca-hud-pill text-right">
+            <div className="batca-hud-label">Giỏ cá</div>
+            <div className="batca-hud-value">{hud.carrying}/{hud.capacity}</div>
+          </div>
           <button
-            className="batca-btn batca-btn-ghost mt-1.5 px-3.5 py-2 text-[13px] min-h-10"
+            className="batca-btn batca-btn-ghost px-3 py-1.5 text-sm min-h-0 shadow-sm"
+            style={{ padding: '6px 12px', minHeight: '32px', fontSize: '13px' }}
             onClick={onOpenUpgrade}
+            disabled={!canOpenUpgrade}
+            title={canOpenUpgrade ? "Nâng cấp đồ nghề" : "Thu lưới về trước khi nâng cấp"}
           >
             Nâng cấp
           </button>
@@ -63,6 +86,19 @@ export function GameplayHud({ hud, castsLeft, castsPerRound, currentLevel, level
             className={`batca-cast-dot ${i < castsLeft ? "active" : "used"}`}
           />
         ))}
+      </div>
+
+      <div
+        className={`batca-target-pill ${targetMet ? "met" : ""}`}
+        aria-label={`Tiến độ mục tiêu ${levelScore} trên ${levelTarget} đồng`}
+      >
+        <div className="batca-target-row">
+          <span>Mục tiêu</span>
+          <strong>{levelScore}/{levelTarget}đ</strong>
+        </div>
+        <div className="batca-target-track">
+          <div className="batca-target-fill" style={{ width: `${targetPct}%` }} />
+        </div>
       </div>
 
       {hud.comboCount > 1 && (
@@ -93,6 +129,10 @@ export function GameplayHud({ hud, castsLeft, castsPerRound, currentLevel, level
 
       <div className="batca-depthbar">
         <div className="batca-depthbar-fill" style={{ height: `${depthPct}%` }} />
+      </div>
+
+      <div className="batca-depth-readout" aria-label={`Độ sâu ${hud.depth} trên ${hud.maxDepth} mét`}>
+        {getDepthZoneName(hud.depth)} · {hud.depth}/{hud.maxDepth}m
       </div>
     </>
   );

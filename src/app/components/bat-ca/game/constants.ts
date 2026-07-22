@@ -4,7 +4,10 @@ export const SURFACE_Y = 150;
 export const BOTTOM_Y = 820;
 export const BOTTOM_SAFE_AREA = 40;
 export const MAX_DEPTH_LIMIT = 4000; // cho phép lặn sâu hơn nhiều
-export const INITIAL_MAX_DEPTH = 500;
+export const INITIAL_MAX_DEPTH = 550;
 export const DEPTH_UPGRADE_DELTA = 400;
 export const SPAWN_PREVIEW_BUFFER = 90;
-
+export const INITIAL_NET_SIZE = 22;
+export const INITIAL_PULL_SPEED = 220;
+export const INITIAL_CAPACITY = 3;
+export const ROUND_FEEDBACK_DURATION_MS = 1100;

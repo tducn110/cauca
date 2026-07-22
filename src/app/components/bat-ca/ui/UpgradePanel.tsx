@@ -3,19 +3,14 @@ import { UPGRADE_DEFS, upgradeCost } from "../engine";
 import type { UpgradeDef } from "../game/upgrades";
 import { ArrowDownToLine, Maximize2, Gauge, Package } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { gameAudio } from "../../../audio/audioManager";
 
 const UPG_ICONS: Record<string, ReactNode> = {
   depth: <ArrowDownToLine size={20} />,
   netSize: <Maximize2 size={20} />,
   pullSpeed: <Gauge size={20} />,
   capacity: <Package size={20} />,
-};
-
-const UPG_EFFECTS: Record<string, (lvl: number) => string> = {
-  depth: (lvl) => `Phạm vi +${(lvl + 1) * 12}%`,
-  netSize: (lvl) => `Bắt cá +${(lvl + 1) * 8}%`,
-  pullSpeed: (lvl) => `Kéo nhanh +${(lvl + 1) * 10}%`,
-  capacity: (lvl) => `Giỏ +${lvl + 1} chỗ`,
 };
 
 export function UpgradePanel({ game, money, onBuy, onClose }: {
@@ -27,10 +22,24 @@ export function UpgradePanel({ game, money, onBuy, onClose }: {
     return cost !== null && money >= cost;
   });
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="batca-backdrop">
-      <div className="batca-card">
-        <h2>Nâng cấp đồ nghề</h2>
+    <div className="batca-backdrop" onClick={onClose}>
+      <div
+        className="batca-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="batca-upgrade-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h2 id="batca-upgrade-title">Nâng cấp đồ nghề</h2>
         <div className="batca-money-chip">💰 {money}đ</div>
         <div className="batca-upg-list">
           {UPGRADE_DEFS.map((def: UpgradeDef) => {
@@ -51,7 +60,7 @@ export function UpgradePanel({ game, money, onBuy, onClose }: {
                     <span className="text-xs text-pencil-gray">Lv.{lvl}</span>
                   </div>
                   <div className="text-[11px] text-bamboo-green font-bold mt-0.5">
-                    {maxed ? "Đã max" : UPG_EFFECTS[def.type]?.(lvl) || ""}
+                    {maxed ? "Đã max" : def.effectLabel}
                   </div>
                   <div className="batca-upg-dots">
                     {Array.from({ length: def.maxLevel }).map((_, i) => (
@@ -67,7 +76,12 @@ export function UpgradePanel({ game, money, onBuy, onClose }: {
                 <button
                   className={`batca-upg-buy ${maxed ? "maxed" : ""}`}
                   disabled={maxed || !afford}
-                  onClick={() => { if (game.buyUpgrade(def.type)) onBuy(); }}
+                  onClick={() => {
+                    if (game.buyUpgrade(def.type)) {
+                      gameAudio.play("buy");
+                      onBuy();
+                    }
+                  }}
                 >
                   {maxed ? "MAX" : `${cost}đ`}
                 </button>
@@ -82,4 +96,3 @@ export function UpgradePanel({ game, money, onBuy, onClose }: {
     </div>
   );
 }
-

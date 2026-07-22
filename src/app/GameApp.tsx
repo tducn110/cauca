@@ -1,10 +1,15 @@
+import { lazy, Suspense } from "react";
 import type { GameScreen } from "./hooks/useAppShell";
 import type { EndGameData } from "./components/bat-ca/hooks/useBatCaGame";
 import { LoadingScreen } from "./components/bat-ca/LoadingScreen";
 import { HomeScreen } from "./screens/HomeScreen";
-import { GameContainer } from "./screens/GameContainer";
 import { EndGameScreen } from "./screens/EndGameScreen";
 import { LeaderboardScreen } from "./screens/LeaderboardScreen";
+
+const GameContainer = lazy(async () => {
+  const module = await import("./screens/GameContainer");
+  return { default: module.GameContainer };
+});
 
 interface Props {
   screen: GameScreen;
@@ -15,6 +20,7 @@ interface Props {
   muted: boolean;
   bestScore: number;
   lastScore: number;
+  isNewBest: boolean;
   endGameData: EndGameData | null;
   setMuted: (updater: (value: boolean) => boolean) => void;
   setShowDashboard: (value: boolean) => void;
@@ -36,6 +42,7 @@ export function GameApp({
   muted,
   bestScore,
   lastScore,
+  isNewBest,
   endGameData,
   setMuted,
   setShowDashboard,
@@ -75,9 +82,11 @@ export function GameApp({
 
   if (screen === "gameplay") {
     return (
-      <GameContainer
-        onEndGame={handleEndGame}
-      />
+      <Suspense fallback={<div className="min-h-screen min-h-[100dvh] bg-rice-paper grid place-items-center font-bold text-ink-dark">Đang mở ao cá...</div>}>
+        <GameContainer
+          onEndGame={handleEndGame}
+        />
+      </Suspense>
     );
   }
 
@@ -91,7 +100,7 @@ export function GameApp({
           fishCaught={endGameData.totalFishCaught}
           levelReached={endGameData.levelReached}
           reason={endGameData.reason}
-          isNewBest={endGameData.totalScore >= bestScore}
+          isNewBest={isNewBest}
           onPlayAgain={handlePlayAgain}
           onGoHome={handleGoHome}
           onShowLeaderboard={handleShowLeaderboard}

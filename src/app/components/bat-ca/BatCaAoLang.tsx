@@ -1,13 +1,15 @@
 import { useBatCaGame, type EndGameData } from "./hooks/useBatCaGame";
 import { GameCanvas } from "./GameCanvas";
 import { TutorialOverlay, GameplayHud, UpgradePanel, ShopPanel, RoundFeedback, LevelSummary } from "./ui";
+import { ArrowLeft } from "lucide-react";
 import "./batca.css";
 
 interface Props {
   onEndGame?: (data: EndGameData) => void;
+  initialCastPower?: number;
 }
 
-export function BatCaAoLang({ onEndGame }: Props) {
+export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
   const {
     game,
     mode,
@@ -20,6 +22,7 @@ export function BatCaAoLang({ onEndGame }: Props) {
     castsLeft,
     lastFeedback,
     hasAffordableUpgrade,
+    canOpenUpgrade,
     refresh,
     onHud,
     play,
@@ -30,7 +33,8 @@ export function BatCaAoLang({ onEndGame }: Props) {
     openShop,
     closeShop,
     useDynamite,
-  } = useBatCaGame(onEndGame);
+    dismissFeedback,
+  } = useBatCaGame(onEndGame, initialCastPower);
 
   const active = mode === "playing";
   const canUseDynamite = game.carrying.some((f) => f.kind.isBad) && (hud.activeBuffs.dynamite ?? 0) > 0;
@@ -41,6 +45,17 @@ export function BatCaAoLang({ onEndGame }: Props) {
         <GameCanvas game={game} active={active} onHud={onHud} />
 
         <div className="batca-overlay">
+          {mode === "playing" && (
+            <button
+              onClick={endGame}
+              className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[7] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full bg-[rgba(255,255,255,0.9)] border border-pencil text-ink-dark font-extrabold text-[13px] cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+              aria-label="Kết thúc chuyến câu"
+            >
+              <ArrowLeft size={18} className="sm:hidden" />
+              <span className="hidden sm:inline">↩ Kết thúc</span>
+            </button>
+          )}
+
           {(mode === "playing" || mode === "levelSummary") && (
             <GameplayHud
               hud={hud}
@@ -48,7 +63,10 @@ export function BatCaAoLang({ onEndGame }: Props) {
               castsPerRound={levelDef.casts}
               currentLevel={currentLevel}
               levelTime={levelDef.time}
+              levelScore={levelScore}
+              levelTarget={levelDef.target}
               canUseDynamite={canUseDynamite}
+              canOpenUpgrade={canOpenUpgrade}
               onOpenUpgrade={openUpgrade}
               onUseDynamite={useDynamite}
             />
@@ -58,8 +76,8 @@ export function BatCaAoLang({ onEndGame }: Props) {
             <TutorialOverlay onReady={play} />
           )}
 
-          {mode === "playing" && lastFeedback && (
-            <RoundFeedback feedback={lastFeedback} onDone={() => {}} />
+          {(mode === "playing" || mode === "result") && lastFeedback && (
+            <RoundFeedback feedback={lastFeedback} onDone={dismissFeedback} />
           )}
 
           {mode === "levelSummary" && (

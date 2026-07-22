@@ -53,6 +53,8 @@ export function hasActiveBuff(type: BuffType, state: GameState): boolean {
 }
 
 export function tickBuffs(state: GameState, dt: number) {
+  if (state.mode !== "playing") return;
+
   if (state.activeBuffs.strength) {
     state.activeBuffs.strength = Math.max(0, state.activeBuffs.strength - dt);
     if (state.activeBuffs.strength <= 0) delete state.activeBuffs.strength;
@@ -82,7 +84,7 @@ export function applyLevelStartBuffs(state: GameState) {
   state.activeBuffs = { ...state.nextLevelBuffs };
   state.nextLevelBuffs = {};
 
-  // Thờigian được cộng ngay
+  // Thời gian được cộng ngay.
   if (state.activeBuffs.time) {
     state.levelTimeLeft += state.activeBuffs.time;
     delete state.activeBuffs.time;
@@ -103,10 +105,11 @@ export function buyBuff(state: GameState, type: BuffType): boolean {
 export function useDynamite(state: GameState): boolean {
   const count = state.activeBuffs.dynamite ?? 0;
   if (count <= 0) return false;
-  const badCount = state.carrying.filter((f) => f.kind.isBad).length;
-  if (badCount === 0) return false;
+  const destroyed = new Set(state.carrying.filter((fish) => fish.kind.isBad));
+  if (destroyed.size === 0) return false;
 
-  state.carrying = state.carrying.filter((f) => !f.kind.isBad);
+  state.carrying = state.carrying.filter((fish) => !destroyed.has(fish));
+  state.fish = state.fish.filter((fish) => !destroyed.has(fish));
   state.activeBuffs.dynamite = count - 1;
   if (state.activeBuffs.dynamite <= 0) delete state.activeBuffs.dynamite;
   return true;

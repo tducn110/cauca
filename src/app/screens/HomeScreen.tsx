@@ -1,6 +1,5 @@
-import { TopNav } from "../components/bat-ca/TopNav";
-import { HeroSection } from "../components/bat-ca/HeroSection";
 import { DashboardPanel } from "../components/bat-ca/DashboardPanel";
+import { FishingDockScreen } from "../components/bat-ca/dock/FishingDockScreen";
 
 interface Props {
   bestScore: number;
@@ -24,15 +23,13 @@ export function HomeScreen({
   onCloseDashboard,
 }: Props) {
   return (
-    <div className="landing-enter min-h-screen bg-rice-paper">
-      <TopNav
+    <div className="min-h-screen min-h-[100dvh] overflow-hidden bg-[#176ff3]">
+      <FishingDockScreen
         muted={muted}
         onToggleMute={onToggleMute}
-        onOpenDashboard={onOpenDashboard}
+        onPlay={onPlay}
+        onShowStats={onOpenDashboard}
       />
-
-      <HeroSection onPlay={onPlay} best={bestScore} />
-
       <DashboardPanel
         open={showDashboard}
         onClose={onCloseDashboard}

@@ -1,306 +1,376 @@
-// Vẽ scene game bằng Canvas 2D trong hệ toạ độ logic (390 x 844).
-import {
-  Game, Fish, LOGICAL_WIDTH, LOGICAL_HEIGHT, SURFACE_Y, BOTTOM_Y,
-} from "./engine";
+import { Application, Container, Graphics, Text } from "pixi.js";
+import { Game, type Fish, LOGICAL_HEIGHT, LOGICAL_WIDTH, SURFACE_Y } from "./engine";
+import { MAX_DEPTH_LIMIT } from "./game/constants";
+import { netSizeBonus } from "./game/buffs";
 
-// Palette "Bộ Lạc Đậu Phộng"
 const C = {
   paper: "#f5ecd7",
-  paperWarm: "#efe3c4",
   ink: "#2a2418",
-  bamboo: "#6b8e3d",
-  bambooSoft: "#c8d68a",
-  leafDeep: "#4c6630",
   earth: "#8e4e22",
-  orange: "#e87432",
-  yellow: "#f0b840",
 };
 
-let bgCache: { w: number; h: number; depthZone: number; canvas: HTMLCanvasElement } | null = null;
+interface FishView {
+  node: Graphics;
+  kindType: string | null;
+  size: number;
+}
 
-function buildBackground(w: number, h: number, depthZone: number) {
-  const cv = document.createElement("canvas");
-  cv.width = w; cv.height = h;
-  const ctx = cv.getContext("2d")!;
+interface FeedbackView {
+  root: Container;
+  shadow: Text;
+  label: Text;
+  lastText: string;
+  lastColor: string;
+}
 
-  // Bầu trời giấy dó
-  const sky = ctx.createLinearGradient(0, 0, 0, SURFACE_Y);
-  sky.addColorStop(0, C.paper);
-  sky.addColorStop(1, C.paperWarm);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, SURFACE_Y);
+interface SceneRefs {
+  screenBackground: Graphics;
+  world: Container;
+  surfaceStatic: Graphics;
+  sunRays: Graphics;
+  floor: Graphics;
+  lotusStatic: Graphics;
+  waterLine: Graphics;
+  fishLayer: Container;
+  net: Graphics;
+  ripples: Graphics;
+  feedbackLayer: Container;
+  fishById: Map<number, FishView>;
+  freeFishViews: FishView[];
+  activeFishIds: Set<number>;
+  feedbackPool: FeedbackView[];
+  lastBottomY: number;
+  lastBackgroundTint: number;
+}
 
-  // Núi mờ
-  ctx.fillStyle = "rgba(230,216,178,0.6)";
-  ctx.beginPath();
-  ctx.moveTo(0, SURFACE_Y);
-  ctx.quadraticCurveTo(w * 0.25, SURFACE_Y - 70, w * 0.5, SURFACE_Y - 30);
-  ctx.quadraticCurveTo(w * 0.78, SURFACE_Y + 8, w, SURFACE_Y - 40);
-  ctx.lineTo(w, SURFACE_Y); ctx.closePath(); ctx.fill();
+const sceneRefsMap = new WeakMap<Application, SceneRefs>();
 
-  // Đàn cò
-  ctx.strokeStyle = "rgba(138,125,101,0.6)";
-  ctx.lineWidth = 1.4; ctx.lineCap = "round";
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function lerpColorNumber(from: number, to: number, amount: number): number {
+  const t = clamp(amount, 0, 1);
+  const fromR = (from >> 16) & 0xff;
+  const fromG = (from >> 8) & 0xff;
+  const fromB = from & 0xff;
+  const toR = (to >> 16) & 0xff;
+  const toG = (to >> 8) & 0xff;
+  const toB = to & 0xff;
+  const r = Math.round(fromR + (toR - fromR) * t);
+  const g = Math.round(fromG + (toG - fromG) * t);
+  const b = Math.round(fromB + (toB - fromB) * t);
+  return (r << 16) | (g << 8) | b;
+}
+
+function drawLotus(target: Graphics, x: number, y: number, radius: number): void {
+  target.ellipse(x, y, radius, radius * 0.5).fill("#5e9e4a").stroke({ color: "rgba(42,36,24,0.25)", width: 1 });
+  for (let i = 0; i < 5; i++) {
+    const angle = -0.9 + i * 0.45;
+    target.moveTo(x, y).lineTo(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius * 0.5);
+  }
+  target.stroke({ color: "rgba(42,36,24,0.18)", width: 1 });
+}
+
+function drawSurfaceStatic(target: Graphics): void {
+  target.rect(0, 0, LOGICAL_WIDTH, SURFACE_Y).fill(C.paper);
+  target
+    .moveTo(0, SURFACE_Y)
+    .quadraticCurveTo(LOGICAL_WIDTH * 0.25, SURFACE_Y - 70, LOGICAL_WIDTH * 0.5, SURFACE_Y - 30)
+    .quadraticCurveTo(LOGICAL_WIDTH * 0.78, SURFACE_Y + 8, LOGICAL_WIDTH, SURFACE_Y - 40)
+    .lineTo(LOGICAL_WIDTH, SURFACE_Y)
+    .closePath()
+    .fill("rgba(230,216,178,0.6)");
+
   for (let i = 0; i < 4; i++) {
-    const bx = 60 + i * 60, by = 50 + (i % 2) * 16;
-    ctx.beginPath();
-    ctx.moveTo(bx - 6, by); ctx.lineTo(bx, by - 5); ctx.lineTo(bx + 6, by);
-    ctx.stroke();
+    const x = 60 + i * 60;
+    const y = 50 + (i % 2) * 16;
+    target.moveTo(x - 6, y).lineTo(x, y - 5).lineTo(x + 6, y);
   }
+  target.stroke({ color: "rgba(138,125,101,0.6)", width: 1.4 });
 
-  // Khóm tre hai bên
-  ctx.strokeStyle = "rgba(107,142,61,0.5)";
-  ctx.lineWidth = 1.4;
   for (let i = 0; i < 6; i++) {
-    const x = 6 + i * 5;
-    ctx.beginPath(); ctx.moveTo(x, SURFACE_Y); ctx.lineTo(x - 4, 40); ctx.stroke();
-    const x2 = w - 6 - i * 5;
-    ctx.beginPath(); ctx.moveTo(x2, SURFACE_Y); ctx.lineTo(x2 + 4, 50); ctx.stroke();
+    const leftX = 6 + i * 5;
+    const rightX = LOGICAL_WIDTH - 6 - i * 5;
+    target.moveTo(leftX, SURFACE_Y).lineTo(leftX - 4, 40);
+    target.moveTo(rightX, SURFACE_Y).lineTo(rightX + 4, 50);
   }
+  target.stroke({ color: "rgba(107,142,61,0.5)", width: 1.4 });
+}
 
-  // Nước nhiều tầng theo zone sâu
-  const water = ctx.createLinearGradient(0, SURFACE_Y, 0, BOTTOM_Y);
-  if (depthZone === 0) {
-    water.addColorStop(0, "#7fb4c4");
-    water.addColorStop(0.35, "#4f93a8");
-    water.addColorStop(0.7, "#2f6f86");
-    water.addColorStop(1, "#1d4d5e");
-  } else if (depthZone === 1) {
-    water.addColorStop(0, "#4f93a8");
-    water.addColorStop(0.4, "#2f6f86");
-    water.addColorStop(0.8, "#1a4a5c");
-    water.addColorStop(1, "#0f3544");
-  } else if (depthZone === 2) {
-    water.addColorStop(0, "#2f6f86");
-    water.addColorStop(0.4, "#1d4d5e");
-    water.addColorStop(0.8, "#0f3544");
-    water.addColorStop(1, "#082630");
-  } else if (depthZone === 3) {
-    water.addColorStop(0, "#1d4d5e");
-    water.addColorStop(0.5, "#0f3544");
-    water.addColorStop(0.9, "#062029");
-    water.addColorStop(1, "#021015");
-  } else if (depthZone === 4) {
-    water.addColorStop(0, "#0f3544");
-    water.addColorStop(0.5, "#082630");
-    water.addColorStop(0.9, "#021015");
-    water.addColorStop(1, "#000508");
-  }
-  ctx.fillStyle = water;
-  ctx.fillRect(0, SURFACE_Y, w, BOTTOM_Y - SURFACE_Y);
+function drawLotusStatic(target: Graphics): void {
+  drawLotus(target, 70, SURFACE_Y, 34);
+  drawLotus(target, LOGICAL_WIDTH - 64, SURFACE_Y, 28);
+  drawLotus(target, LOGICAL_WIDTH * 0.5, SURFACE_Y, 22);
+}
 
-  // Tia sáng dưới nước
-  ctx.fillStyle = "rgba(255,255,255,0.05)";
+function rebuildDepthGeometry(refs: SceneRefs, bottomY: number): void {
+  refs.sunRays.clear();
   for (let i = 0; i < 5; i++) {
     const x = 30 + i * 75;
-    ctx.beginPath();
-    ctx.moveTo(x, SURFACE_Y); ctx.lineTo(x + 26, SURFACE_Y);
-    ctx.lineTo(x + 60, BOTTOM_Y); ctx.lineTo(x + 20, BOTTOM_Y);
-    ctx.closePath(); ctx.fill();
+    refs.sunRays
+      .moveTo(x, SURFACE_Y)
+      .lineTo(x + 26, SURFACE_Y)
+      .lineTo(x + 60, bottomY + 100)
+      .lineTo(x + 20, bottomY + 100)
+      .closePath()
+      .fill("rgba(255,255,255,0.05)");
   }
 
-  // Đáy bùn / hiệu ứng vực sâu
-  if (depthZone >= 3) {
-    const floor = ctx.createLinearGradient(0, BOTTOM_Y - 40, 0, BOTTOM_Y);
-    floor.addColorStop(0, "rgba(8,26,32,0)");
-    floor.addColorStop(1, "#000508");
-    ctx.fillStyle = floor;
-    ctx.fillRect(0, BOTTOM_Y - 40, w, 40);
-  } else {
-    ctx.fillStyle = "#163b48";
-    ctx.beginPath();
-    ctx.moveTo(0, BOTTOM_Y);
-    ctx.quadraticCurveTo(w * 0.5, BOTTOM_Y - 18, w, BOTTOM_Y);
-    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
-  }
-
-  // Lá sen + bèo trên mặt nước
-  drawLotus(ctx, 70, SURFACE_Y, 34);
-  drawLotus(ctx, w - 64, SURFACE_Y, 28);
-  drawLotus(ctx, w * 0.5, SURFACE_Y, 22);
-
-  bgCache = { w, h, depthZone, canvas: cv };
-  return cv;
+  const floorY = bottomY + 36;
+  refs.floor.clear();
+  refs.floor
+    .moveTo(0, floorY)
+    .quadraticCurveTo(LOGICAL_WIDTH * 0.5, floorY - 18, LOGICAL_WIDTH, floorY)
+    .lineTo(LOGICAL_WIDTH, floorY + 220)
+    .lineTo(0, floorY + 220)
+    .closePath()
+    .fill("#163b48");
 }
 
-function drawLotus(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = "#5e9e4a";
-  ctx.strokeStyle = "rgba(42,36,24,0.25)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r, r * 0.5, 0, 0.4, Math.PI * 2 - 0.1);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = "rgba(42,36,24,0.18)";
-  for (let i = 0; i < 5; i++) {
-    const a = -0.9 + i * 0.45;
-    ctx.beginPath(); ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r * 0.5); ctx.stroke();
+function updateWaterLine(target: Graphics, now: number): void {
+  target.clear();
+  for (let x = 0; x <= LOGICAL_WIDTH; x += 12) {
+    const y = SURFACE_Y + Math.sin(x * 0.08 + now * 0.002) * 2;
+    if (x === 0) target.moveTo(x, y);
+    else target.lineTo(x, y);
   }
-  ctx.restore();
+  target.stroke({ color: "rgba(255,255,255,0.4)", width: 1.5 });
 }
 
-function drawFish(ctx: CanvasRenderingContext2D, f: Fish) {
-  const dir = f.vx >= 0 ? 1 : -1;
-  ctx.save();
-  ctx.translate(f.x, f.y);
-  ctx.scale(dir, 1);
-  const s = f.size;
+function drawFishShape(target: Graphics, fish: Fish): void {
+  const size = fish.size;
 
-  if (f.kind.isBad) {
-    // Rác / dép cũ
-    ctx.fillStyle = f.kind.color;
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, s, s * 0.6, 0.3, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-s * 0.4, -s * 0.2); ctx.lineTo(s * 0.4, -s * 0.5); ctx.stroke();
-    ctx.restore();
+  if (fish.kind.isBad) {
+    target.ellipse(0, 0, size, size * 0.6).fill(fish.kind.color).stroke({ color: C.ink, width: 1.2 });
+    target.moveTo(-size * 0.4, -size * 0.2).lineTo(size * 0.4, -size * 0.5).stroke({ color: C.ink, width: 1.2 });
     return;
   }
 
-  if (f.kind.type === "tom") {
-    ctx.fillStyle = f.kind.color; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(0, 0, s, 0.2, Math.PI * 1.8); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(0, 0, s * 0.9, s * 0.55, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s, -2); ctx.lineTo(s + 6, -6); ctx.moveTo(s, 2); ctx.lineTo(s + 6, 6); ctx.stroke();
-    ctx.restore();
+  if (fish.kind.type === "tom") {
+    target.arc(0, 0, size, 0.2, Math.PI * 1.8).stroke({ color: C.ink, width: 1.2 });
+    target.ellipse(0, 0, size * 0.9, size * 0.55).fill(fish.kind.color).stroke({ color: C.ink, width: 1.2 });
+    target.moveTo(size, -2).lineTo(size + 6, -6).moveTo(size, 2).lineTo(size + 6, 6).stroke({ color: C.ink, width: 1.2 });
     return;
   }
 
-  if (f.kind.type === "cua") {
-    ctx.fillStyle = f.kind.color; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.ellipse(0, 0, s, s * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-s, 0); ctx.lineTo(-s - 6, -4); ctx.moveTo(s, 0); ctx.lineTo(s + 6, -4);
-    ctx.moveTo(-s * 0.6, s * 0.5); ctx.lineTo(-s * 0.6, s + 4);
-    ctx.moveTo(s * 0.6, s * 0.5); ctx.lineTo(s * 0.6, s + 4);
-    ctx.stroke();
-    ctx.restore();
+  if (fish.kind.type === "cua") {
+    target.ellipse(0, 0, size, size * 0.7).fill(fish.kind.color).stroke({ color: C.ink, width: 1.2 });
+    target.moveTo(-size, 0).lineTo(-size - 6, -4).moveTo(size, 0).lineTo(size + 6, -4);
+    target.moveTo(-size * 0.6, size * 0.5).lineTo(-size * 0.6, size + 4);
+    target.moveTo(size * 0.6, size * 0.5).lineTo(size * 0.6, size + 4);
+    target.stroke({ color: C.ink, width: 1.2 });
     return;
   }
 
-  // Cá thường: thân ellipse + đuôi tam giác
-  // Đuôi
-  ctx.fillStyle = f.kind.color;
-  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.9, 0);
-  ctx.lineTo(-s * 1.7, -s * 0.7);
-  ctx.lineTo(-s * 1.7, s * 0.7);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Thân
-  const g = ctx.createLinearGradient(0, -s, 0, s);
-  g.addColorStop(0, f.kind.color);
-  g.addColorStop(1, f.kind.belly);
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, s * 1.3, s * 0.75, 0, 0, Math.PI * 2);
-  ctx.fill(); ctx.stroke();
-  // Vây lưng
-  ctx.fillStyle = f.kind.color;
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.2, -s * 0.7); ctx.lineTo(s * 0.3, -s * 1.1); ctx.lineTo(s * 0.5, -s * 0.6);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  // Mắt
-  ctx.fillStyle = "#fff";
-  ctx.beginPath(); ctx.arc(s * 0.7, -s * 0.1, s * 0.22, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = C.ink;
-  ctx.beginPath(); ctx.arc(s * 0.75, -s * 0.1, s * 0.1, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
+  target
+    .moveTo(-size * 0.9, 0)
+    .lineTo(-size * 1.7, -size * 0.7)
+    .lineTo(-size * 1.7, size * 0.7)
+    .closePath()
+    .fill(fish.kind.color)
+    .stroke({ color: C.ink, width: 1.2 });
+  target.ellipse(0, 0, size * 1.3, size * 0.75).fill(fish.kind.color).stroke({ color: C.ink, width: 1.2 });
+  target
+    .moveTo(-size * 0.2, -size * 0.7)
+    .lineTo(size * 0.3, -size * 1.1)
+    .lineTo(size * 0.5, -size * 0.6)
+    .closePath()
+    .fill(fish.kind.color)
+    .stroke({ color: C.ink, width: 1.2 });
+  target.circle(size * 0.7, -size * 0.1, size * 0.22).fill("#fff");
+  target.circle(size * 0.75, -size * 0.1, size * 0.1).fill(C.ink);
 }
 
-function drawNet(ctx: CanvasRenderingContext2D, g: Game) {
-  const n = g.net;
-  const r = g.stats.netSize;
-  // Dây từ cầu tre xuống lưới
-  ctx.strokeStyle = "rgba(42,36,24,0.55)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(n.x, 110);
-  ctx.lineTo(n.x, n.y - r);
-  ctx.stroke();
+function drawNet(target: Graphics, game: Game): void {
+  const net = game.net;
+  const radius = game.stats.netSize + netSizeBonus(game);
 
-  // Cần tre nhỏ ở mặt nước
-  ctx.strokeStyle = C.earth; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.moveTo(n.x - 22, 108); ctx.lineTo(n.x + 14, 100); ctx.stroke();
+  target.moveTo(net.x, 110).lineTo(net.x, net.y - radius).stroke({ color: "rgba(42,36,24,0.55)", width: 2 });
+  target.moveTo(net.x - 22, 108).lineTo(net.x + 14, 100).stroke({ color: C.earth, width: 4 });
+  target.circle(net.x, net.y, radius).stroke({ color: "#d8c9a0", width: 3 });
+  target
+    .moveTo(net.x - radius, net.y)
+    .quadraticCurveTo(net.x, net.y + radius * 1.8, net.x + radius, net.y)
+    .closePath()
+    .fill("rgba(245,236,215,0.18)");
 
-  // Vành lưới
-  ctx.strokeStyle = "#d8c9a0"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2); ctx.stroke();
-  // Túi lưới
-  ctx.fillStyle = "rgba(245,236,215,0.18)";
-  ctx.beginPath();
-  ctx.moveTo(n.x - r, n.y);
-  ctx.quadraticCurveTo(n.x, n.y + r * 1.8, n.x + r, n.y);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = "rgba(245,236,215,0.5)"; ctx.lineWidth = 1;
   for (let i = -2; i <= 2; i++) {
-    const sx = n.x + (i / 2) * r;
-    ctx.beginPath(); ctx.moveTo(sx, n.y);
-    ctx.quadraticCurveTo(n.x, n.y + r * 1.8, sx * 0 + n.x + (i / 4) * r, n.y + r * 1.4);
-    ctx.stroke();
+    const startX = net.x + (i / 2) * radius;
+    target
+      .moveTo(startX, net.y)
+      .quadraticCurveTo(net.x, net.y + radius * 1.8, net.x + (i / 4) * radius, net.y + radius * 1.4);
+  }
+  target.stroke({ color: "rgba(245,236,215,0.5)", width: 1 });
+}
+
+function acquireFishView(refs: SceneRefs, id: number): FishView {
+  const existing = refs.fishById.get(id);
+  if (existing) return existing;
+
+  const view = refs.freeFishViews.pop() ?? {
+    node: new Graphics(),
+    kindType: null,
+    size: -1,
+  };
+  view.node.visible = true;
+  refs.fishById.set(id, view);
+  if (!view.node.parent) refs.fishLayer.addChild(view.node);
+  return view;
+}
+
+function updateFishViews(refs: SceneRefs, fish: Fish[]): void {
+  refs.activeFishIds.clear();
+  for (const item of fish) {
+    refs.activeFishIds.add(item.id);
+    const view = acquireFishView(refs, item.id);
+    if (view.kindType !== item.kind.type || view.size !== item.size) {
+      view.node.clear();
+      drawFishShape(view.node, item);
+      view.kindType = item.kind.type;
+      view.size = item.size;
+    }
+    view.node.position.set(item.x, item.y);
+    view.node.scale.set(item.vx >= 0 ? 1 : -1, 1);
+    view.node.alpha = item.flash > 0 ? 0.62 + Math.sin(item.flash * 40) * 0.18 : 1;
+  }
+
+  for (const [id, view] of refs.fishById) {
+    if (refs.activeFishIds.has(id)) continue;
+    refs.fishById.delete(id);
+    view.node.visible = false;
+    view.kindType = null;
+    view.size = -1;
+    refs.freeFishViews.push(view);
   }
 }
 
-export function renderScene(ctx: CanvasRenderingContext2D, g: Game) {
-  const w = LOGICAL_WIDTH, h = LOGICAL_HEIGHT;
-  const depthMeters = Math.round(g.stats.maxDepth - SURFACE_Y);
-  const depthZone = Math.min(4, Math.floor(depthMeters / 1000));
-  const bg = bgCache && bgCache.w === w && bgCache.h === h && bgCache.depthZone === depthZone
-    ? bgCache.canvas
-    : buildBackground(w, h, depthZone);
-  ctx.drawImage(bg, 0, 0);
+function ensureFeedbackView(refs: SceneRefs, index: number): FeedbackView {
+  const existing = refs.feedbackPool[index];
+  if (existing) return existing;
 
-  // Gợn nước mặt
-  ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  for (let x = 0; x <= w; x += 12) {
-    const yy = SURFACE_Y + Math.sin(x * 0.08 + performance.now() * 0.002) * 2;
-    if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
-  }
-  ctx.stroke();
+  const root = new Container();
+  const textStyle = { fontFamily: "'Be Vietnam Pro', sans-serif", fontSize: 16, fontWeight: "700" as const };
+  const shadow = new Text({ text: "", style: { ...textStyle, fill: "#ffffff" } });
+  const label = new Text({ text: "", style: { ...textStyle, fill: "#ffffff" } });
+  shadow.anchor.set(0.5);
+  label.anchor.set(0.5);
+  shadow.position.set(1, 1);
+  root.addChild(shadow, label);
+  refs.feedbackLayer.addChild(root);
 
-  // Hiển thị tên zone + mét
-  ctx.textAlign = "right";
-  ctx.font = "700 11px 'Be Vietnam Pro', sans-serif";
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.fillText(getDepthZoneName(depthMeters), w - 12, SURFACE_Y + 18);
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.font = "600 10px 'Be Vietnam Pro', sans-serif";
-  ctx.fillText(depthMeters + "m", w - 12, SURFACE_Y + 32);
-  ctx.textAlign = "center";
-
-  for (const f of g.fish) drawFish(ctx, f);
-  drawNet(ctx, g);
-
-  // Ripples
-  ctx.strokeStyle = "rgba(255,255,255,0.5)";
-  for (const rp of g.ripples) {
-    ctx.globalAlpha = 1 - rp.age / 0.8;
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  // Feedback text
-  ctx.textAlign = "center";
-  ctx.font = "700 16px 'Be Vietnam Pro', sans-serif";
-  for (const t of g.feedback) {
-    ctx.globalAlpha = 1 - t.age / t.life;
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(t.text, t.x + 1, t.y + 1);
-    ctx.fillStyle = t.color;
-    ctx.fillText(t.text, t.x, t.y);
-  }
-  ctx.globalAlpha = 1;
+  const view = { root, shadow, label, lastText: "", lastColor: "" };
+  refs.feedbackPool.push(view);
+  return view;
 }
 
-export function getDepthZoneName(meters: number): string {
-  if (meters < 1000) return "Mặt nước";
-  if (meters < 2000) return "Biển khơi";
-  if (meters < 3000) return "Vực sâu";
-  if (meters < 4000) return "Vực Mariana";
-  return "Đáy đại dương";
+function updateFeedbackViews(refs: SceneRefs, game: Game): void {
+  for (let index = 0; index < game.feedback.length; index++) {
+    const item = game.feedback[index];
+    const view = ensureFeedbackView(refs, index);
+    if (view.lastText !== item.text) {
+      view.shadow.text = item.text;
+      view.label.text = item.text;
+      view.lastText = item.text;
+    }
+    if (view.lastColor !== item.color) {
+      view.label.style.fill = item.color;
+      view.lastColor = item.color;
+    }
+    const alpha = Math.max(0, 1 - item.age / item.life);
+    view.root.visible = true;
+    view.root.position.set(item.x, item.y);
+    view.root.alpha = alpha;
+    view.shadow.alpha = 0.85;
+  }
+
+  for (let index = game.feedback.length; index < refs.feedbackPool.length; index++) {
+    refs.feedbackPool[index].root.visible = false;
+  }
+}
+
+function initScene(app: Application): SceneRefs {
+  const screenBackground = new Graphics();
+  screenBackground.rect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT).fill(0xffffff);
+
+  const world = new Container();
+  const surfaceStatic = new Graphics();
+  const sunRays = new Graphics();
+  const floor = new Graphics();
+  const lotusStatic = new Graphics();
+  const waterLine = new Graphics();
+  const fishLayer = new Container();
+  const net = new Graphics();
+  const ripples = new Graphics();
+  const feedbackLayer = new Container();
+  world.addChild(surfaceStatic, sunRays, floor, lotusStatic, waterLine, fishLayer, net, ripples, feedbackLayer);
+
+  drawSurfaceStatic(surfaceStatic);
+  drawLotusStatic(lotusStatic);
+
+  app.stage.addChild(screenBackground, world);
+
+  return {
+    screenBackground,
+    world,
+    surfaceStatic,
+    sunRays,
+    floor,
+    lotusStatic,
+    waterLine,
+    fishLayer,
+    net,
+    ripples,
+    feedbackLayer,
+    fishById: new Map(),
+    freeFishViews: [],
+    activeFishIds: new Set(),
+    feedbackPool: [],
+    lastBottomY: -1,
+    lastBackgroundTint: -1,
+  };
+}
+
+export function renderScene(app: Application, game: Game): void {
+  let refs = sceneRefsMap.get(app);
+  if (!refs) {
+    refs = initScene(app);
+    sceneRefsMap.set(app, refs);
+  }
+
+  if (refs.lastBottomY !== game.levelBottomY) {
+    rebuildDepthGeometry(refs, game.levelBottomY);
+    refs.lastBottomY = game.levelBottomY;
+  }
+
+  const absoluteDepthRatio = clamp(game.cameraY / Math.max(1, MAX_DEPTH_LIMIT - LOGICAL_HEIGHT), 0, 1);
+  const backgroundTint = lerpColorNumber(0x7fb4c4, 0x021015, absoluteDepthRatio);
+  if (refs.lastBackgroundTint !== backgroundTint) {
+    refs.screenBackground.tint = backgroundTint;
+    refs.lastBackgroundTint = backgroundTint;
+  }
+
+  const shake = game.shake * 4;
+  refs.world.position.set(
+    shake > 0 ? (Math.random() - 0.5) * shake : 0,
+    -game.cameraY + (shake > 0 ? (Math.random() - 0.5) * shake : 0),
+  );
+
+  updateWaterLine(refs.waterLine, performance.now());
+  updateFishViews(refs, game.fish);
+
+  refs.net.clear();
+  drawNet(refs.net, game);
+
+  refs.ripples.clear();
+  for (const ripple of game.ripples) {
+    const alpha = clamp(1 - ripple.age / ripple.life, 0, 1);
+    refs.ripples.circle(ripple.x, ripple.y, ripple.r).stroke({ color: 0xffffff, alpha, width: 2 });
+  }
+
+  updateFeedbackViews(refs, game);
+}
+
+export function disposeRenderScene(app: Application): void {
+  sceneRefsMap.delete(app);
 }

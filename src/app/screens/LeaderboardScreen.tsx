@@ -21,7 +21,7 @@ export function LeaderboardScreen({
   onBack,
 }: Props) {
   return (
-    <div className="absolute inset-0 z-50 bg-rice-paper">
+    <div className="absolute inset-0 z-50 bg-rice-paper overflow-y-auto overscroll-contain">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-[rgba(245,236,215,0.95)] backdrop-blur-sm border-b border-[rgba(138,125,101,0.18)] px-4 py-3">
         <div className="flex items-center gap-3">

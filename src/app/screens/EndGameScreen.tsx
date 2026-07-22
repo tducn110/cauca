@@ -27,19 +27,19 @@ export function EndGameScreen({
   const isFail = reason === "target-not-reached" || reason === "time-out";
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(42,36,24,0.85)] backdrop-blur-sm">
-      <div className="bg-cream-card rounded-3xl p-8 max-w-[380px] w-[90%] shadow-2xl text-center">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(42,36,24,0.85)] backdrop-blur-sm p-3">
+      <div className="bg-cream-card rounded-3xl p-8 max-w-[380px] w-[90%] max-h-full overflow-y-auto shadow-2xl text-center" role="dialog" aria-modal="true" aria-labelledby="batca-end-title">
         {isFail ? (
           <>
             <div className="inline-flex items-center gap-1.5 bg-alert-red text-white text-sm font-bold px-4 py-1.5 rounded-full mb-4">
               <Target size={18} />
               {reason === "time-out" ? "Hết giờ!" : "Không đạt mục tiêu"}
             </div>
-            <h1 className="text-3xl font-extrabold text-ink-dark mb-2">Level {levelReached}</h1>
+            <h1 id="batca-end-title" className="text-3xl font-extrabold text-ink-dark mb-2">Level {levelReached}</h1>
           </>
         ) : (
           <>
-            <h1 className="text-3xl font-extrabold text-ink-dark mb-2">Kết thúc!</h1>
+            <h1 id="batca-end-title" className="text-3xl font-extrabold text-ink-dark mb-2">Kết thúc!</h1>
             {isNewBest && (
               <div className="inline-flex items-center gap-1.5 bg-mascot-yellow text-ink-dark text-sm font-bold px-4 py-1.5 rounded-full mb-4 animate-bounce">
                 <Trophy size={18} />

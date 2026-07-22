@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { CaughtSummary } from "../engine";
+import { ROUND_FEEDBACK_DURATION_MS } from "../game/constants";
 
 interface Props {
   feedback: CaughtSummary | null;
@@ -7,21 +8,21 @@ interface Props {
 }
 
 export function RoundFeedback({ feedback, onDone }: Props) {
-  const [visible, setVisible] = useState(false);
+  const onDoneRef = useRef(onDone);
+
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
 
   useEffect(() => {
     if (!feedback) return;
-    setVisible(true);
-    const timer = setTimeout(() => {
-      setVisible(false);
-      onDone();
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [feedback, onDone]);
+    const timer = window.setTimeout(() => onDoneRef.current(), ROUND_FEEDBACK_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
 
-  if (!feedback || !visible) return null;
+  if (!feedback) return null;
 
-  const hasTrash = feedback.items.some((it) => it.isBad);
+  const hasTrash = feedback.items.some((item) => item.isBad);
 
   return (
     <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none animate-fade-in-out">
@@ -44,11 +45,11 @@ export function RoundFeedback({ feedback, onDone }: Props) {
 
         <div className="flex gap-2 justify-center flex-wrap mt-2">
           {feedback.items
-            .filter((it) => !it.isBad)
+            .filter((item) => !item.isBad)
             .slice(0, 5)
-            .map((it, i) => (
-              <span key={i} className="text-sm text-white bg-[rgba(255,255,255,0.15)] px-2 py-0.5 rounded-full">
-                {it.name} ×1
+            .map((item, index) => (
+              <span key={`${item.name}-${index}`} className="text-sm text-white bg-[rgba(255,255,255,0.15)] px-2 py-0.5 rounded-full">
+                {item.name} ×1
               </span>
             ))}
           {hasTrash && (
