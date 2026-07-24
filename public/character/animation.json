@@ -1,0 +1,49 @@
+{
+  "name": "duck_fishing_cast_v3",
+  "version": 3,
+  "canvas": {
+    "width": 480,
+    "height": 541
+  },
+  "frameCount": 6,
+  "frameFiles": [
+    "frame_01.png",
+    "frame_02.png",
+    "frame_03.png",
+    "frame_04.png",
+    "frame_05.png",
+    "frame_06.png"
+  ],
+  "castSequenceZeroBased": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "frameDurationsMs": [
+    85,
+    85,
+    85,
+    85,
+    85,
+    85
+  ],
+  "castDurationMs": 510,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.9426987060998152
+  },
+  "runtime": {
+    "boatBodyLockedInsideFrames": true,
+    "wholeCharacterCastRotationDeg": 0,
+    "idleBoatBobPx": 3,
+    "idleBoatTiltDeg": 1.2
+  },
+  "notes": [
+    "Every frame is RGBA 480x541.",
+    "Boat baseline is normalized to y=510.",
+    "Runtime must not rotate the AnimatedSprite during casting."
+  ]
+}

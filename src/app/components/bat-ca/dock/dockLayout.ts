@@ -20,8 +20,16 @@ export const DOCK_LAYOUT_RATIOS = {
   microLandscapeGaugeCenterY: 0.53,
   channelWidth: 0.29,
   compactChannelWidth: 0.56,
-  characterWidth: 0.285,
-  characterHeightLimit: 0.48,
+  /** Minimum width/height ratio that switches the scene into "wide" mode. */
+  wideMinAspect: 1.45,
+  /** Playable water column width as a fraction of viewport height in wide mode. */
+  wideWorldHeightRatio: 0.66,
+  /** Boat anchor X inside the water column (matches the classic 0.62 boat side). */
+  boatAnchorXRatio: 0.62,
+  /** Fishing channel width as a fraction of the water column in wide mode. */
+  wideChannelWidthRatio: 0.62,
+  /** Duck-boat sprite width as a fraction of the water column in wide mode. */
+  wideCharacterWidthRatio: 0.26,
 } as const;
 
 type DockPoint = Readonly<{ x: number; y: number }>;
@@ -57,6 +65,13 @@ export type DockViewportLayout = Readonly<{
   characterWidth: number;
   characterHeight: number;
   channelWidth: number;
+  /** True on wide landscape screens (e.g. fullscreen desktop): gameplay narrows
+   * into a centred mobile-like water column and the sides render as ground banks. */
+  wide: boolean;
+  /** Left edge (px) of the playable water column; 0 when not wide. */
+  worldLeft: number;
+  /** Width (px) of the playable water column; equals width when not wide. */
+  worldWidth: number;
   sceneSafeAreas: DockSafeAreas;
 }>;
 
@@ -97,7 +112,22 @@ export function createDockLayout(
   const rightSafe = sideSafe + finiteInset(safeAreaInsets.right);
   const bottomSafe = bottomSafeBase + finiteInset(safeAreaInsets.bottom);
   const leftSafe = sideSafe + finiteInset(safeAreaInsets.left);
-  const gameplayAxisX = width * DOCK_LAYOUT_RATIOS.gameplayAxisX;
+
+  // Wide mode (fullscreen desktop / landscape phones): the playable scene is
+  // narrowed into a centred mobile-like water column and the two side regions
+  // below the waterline render as ground banks (Tiny Fishing style).
+  const aspectRatio = width / height;
+  const wide = !compact && !microLandscape && aspectRatio >= DOCK_LAYOUT_RATIOS.wideMinAspect;
+  const worldWidth = wide
+    ? clamp(
+        height * DOCK_LAYOUT_RATIOS.wideWorldHeightRatio,
+        Math.min(380, width),
+        Math.min(width, height * 1.1),
+      )
+    : width;
+  const worldLeft = wide ? (width - worldWidth) / 2 : 0;
+
+  const gameplayAxisX = worldLeft + worldWidth * DOCK_LAYOUT_RATIOS.gameplayAxisX;
   const waterlineRatio = microLandscape
     ? DOCK_LAYOUT_RATIOS.microLandscapeWaterlineY
     : short
@@ -118,12 +148,12 @@ export function createDockLayout(
       ? clamp(width * 0.016, 5, 8)
       : clamp(width * 0.008, 8, 12);
   const availableCardWidth = Math.max(0, (width - leftSafe - rightSafe - upgradeCardGap * 2) / 3);
-  const upgradeCardWidth = Math.min(clamp(width * 0.102, 116, 140), availableCardWidth);
+  const upgradeCardWidth = Math.min(clamp(width * 0.12, 140, 180), availableCardWidth);
   const upgradeCardHeight = microLandscape
     ? clamp(height * 0.26, 80, 86)
     : short
       ? clamp(height * 0.17, 96, 112)
-      : clamp(height * 0.175, 112, 136);
+      : clamp(height * 0.22, 160, 200);
   const gaugeToCardsGap = microLandscape ? 7 : clamp(height * 0.018, 12, 18);
   const maxUpgradeTop = height - bottomSafe - upgradeCardHeight;
   const maxGaugeCenterY = maxUpgradeTop - gaugeToCardsGap - playGaugeSize / 2;
@@ -154,20 +184,37 @@ export function createDockLayout(
   const upgradePanelCenterY = upgradePanelTop + upgradeCardHeight / 2;
 
   const characterWidth = compact
-    ? clamp(width * 0.35, 160, 240)
-    : clamp(width * 0.18, 220, 270);
+    ? clamp(width * 0.35, 160, 220)
+    : wide
+      ? clamp(worldWidth * DOCK_LAYOUT_RATIOS.wideCharacterWidthRatio, 150, 220)
+      : clamp(width * 0.19, 180, 240);
   const characterHeight = characterWidth * (CHARACTER_SOURCE.height / CHARACTER_SOURCE.width);
-  const boatAnchorX = width * 0.63;
-  const boatAnchorY = waterlineY + 4;
+  
+  const rightBankX = worldLeft + worldWidth;
+  const desiredBankGap = 26;
+  const existingCharacterWidth = characterWidth;
+  const estimatedBoatHalfWidth = existingCharacterWidth * 0.48;
+
+  const boatAnchorX = wide
+    ? rightBankX - desiredBankGap - estimatedBoatHalfWidth
+    : worldLeft + worldWidth * 0.68;
+  // Boat sits ON the waterline — anchor is at hull bottom (94.27% of sprite height),
+  // so placing it exactly at waterlineY makes the hull touch the water surface.
+  const boatAnchorY = waterlineY + 2;
   const hookY = boatAnchorY
     - characterHeight * (1 - CHARACTER_SOURCE.hookY / CHARACTER_SOURCE.height);
-  const channelWidth = clamp(width * 0.38, 360, 540);
+  const channelWidth = wide
+    ? clamp(worldWidth * DOCK_LAYOUT_RATIOS.wideChannelWidthRatio, 280, 460)
+    : clamp(width * 0.38, 360, 540);
 
   return {
     width,
     height,
     compact,
     microLandscape,
+    wide,
+    worldLeft,
+    worldWidth,
     gameplayAxisX,
     waterlineY,
     hookX: gameplayAxisX,
@@ -216,5 +263,7 @@ export function dockLayoutCssVariables(layout: DockViewportLayout): Record<strin
     "--dock-safe-right": `${layout.sceneSafeAreas.right}px`,
     "--dock-safe-bottom": `${layout.sceneSafeAreas.bottom}px`,
     "--dock-safe-left": `${layout.sceneSafeAreas.left}px`,
+    "--dock-world-left": `${layout.worldLeft}px`,
+    "--dock-world-width": `${layout.worldWidth}px`,
   };
 }

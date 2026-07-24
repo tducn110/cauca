@@ -23,8 +23,12 @@ describe("fishing dock shared layout", () => {
     }
     expect(layout.waterlineY / height).toBeGreaterThanOrEqual(0.43);
     expect(layout.waterlineY / height).toBeLessThanOrEqual(0.48);
-    expect(layout.boatAnchor.x / width).toBeGreaterThanOrEqual(0.6);
-    expect(layout.boatAnchor.x / width).toBeLessThanOrEqual(0.66);
+    // Desktop viewports are "wide": the boat anchors inside the centred water
+    // column at the classic 0.62 ratio of the column (not of the full width).
+    expect(layout.wide).toBe(true);
+    const boatRatioInWorld = (layout.boatAnchor.x - layout.worldLeft) / layout.worldWidth;
+    expect(boatRatioInWorld).toBeGreaterThanOrEqual(0.6);
+    expect(boatRatioInWorld).toBeLessThanOrEqual(0.66);
   });
 
   it.each([
@@ -64,5 +68,36 @@ describe("fishing dock shared layout", () => {
     expect(layout.upgradePanelWidth).toBeLessThanOrEqual(
       844 - layout.sceneSafeAreas.left - layout.sceneSafeAreas.right + 0.01,
     );
+  });
+
+  it("narrows gameplay into a centred water column on wide fullscreen viewports", () => {
+    const layout = createDockLayout(1920, 1080);
+
+    expect(layout.wide).toBe(true);
+    expect(layout.worldWidth).toBeLessThan(layout.width);
+    expect(layout.worldLeft).toBeGreaterThan(0);
+    // The water column stays centred: equal ground banks on both sides.
+    expect(Math.abs(layout.worldLeft + layout.worldWidth / 2 - layout.width / 2)).toBeLessThanOrEqual(0.01);
+    // Gameplay anchors live inside the column.
+    expect(layout.gameplayAxisX).toBeGreaterThan(layout.worldLeft);
+    expect(layout.gameplayAxisX).toBeLessThan(layout.worldLeft + layout.worldWidth);
+    expect(layout.boatAnchor.x).toBeGreaterThan(layout.worldLeft);
+    expect(layout.boatAnchor.x).toBeLessThan(layout.worldLeft + layout.worldWidth);
+    // The fishing channel never spills over the ground banks.
+    expect(layout.channelWidth).toBeLessThanOrEqual(layout.worldWidth);
+  });
+
+  it.each([
+    [390, 844],
+    [320, 568],
+    [719, 844],
+  ] as const)("keeps the world column full-width on compact %ix%i", (width, height) => {
+    const layout = createDockLayout(width, height);
+
+    expect(layout.wide).toBe(false);
+    expect(layout.worldLeft).toBe(0);
+    expect(layout.worldWidth).toBe(width);
+    expect(layout.boatAnchor.x / width).toBeGreaterThanOrEqual(0.6);
+    expect(layout.boatAnchor.x / width).toBeLessThanOrEqual(0.66);
   });
 });

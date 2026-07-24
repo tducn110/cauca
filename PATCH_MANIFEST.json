@@ -1,0 +1,144 @@
+{
+  "name": "fishing-pixijs-root-patch",
+  "version": "1.0.0",
+  "created": "2026-07-23",
+  "base": "repomix-output(1).xml",
+  "install": "extract into repository root and overwrite",
+  "files": [
+    {
+      "path": "AGENT_ORCHESTRATION_PROMPT.md",
+      "size": 5674,
+      "sha256": "9ee3467955233da0ea54e5e6cee6370bebba894ec508e147cf40061a09d9ff09"
+    },
+    {
+      "path": "FISHING_PATCH_ANALYSIS.md",
+      "size": 5356,
+      "sha256": "b2a73500f45738b9e418baa8102e37f5df91c22405107fad7f2260c994c72255"
+    },
+    {
+      "path": "IMPORT_AND_DELETE_MAP.md",
+      "size": 1824,
+      "sha256": "ee0a2dcc4d90817c271c3a0f115d604a7e0c7dc9137aca472d2536daa0597065"
+    },
+    {
+      "path": "README_PATCH_FIRST.md",
+      "size": 2850,
+      "sha256": "74edd0d2e9f2d5c9961d6c92c2154fd50c7afeb45e24caf9b55854991038ab9b"
+    },
+    {
+      "path": "package.json",
+      "size": 1064,
+      "sha256": "c8cc915a3e0fc77b231397a213db1594a6e2de6edec936a199660c805edf9f3b"
+    },
+    {
+      "path": "public/assets/fishing/character/animation.json",
+      "size": 820,
+      "sha256": "4e9af137c7e85d9ed8c3a8306bce9719a35795a38b2aa050ad7dc863f2217c17"
+    },
+    {
+      "path": "public/assets/fishing/character/frame_01.png",
+      "size": 158065,
+      "sha256": "7c9f0ea6ec58f42c777f17b3df1316a35bdb8019f4647728cbbba2dcf328ff0d"
+    },
+    {
+      "path": "public/assets/fishing/character/frame_02.png",
+      "size": 165897,
+      "sha256": "2cba85376637fc9c43d50379427d91001a13cdb55570a8cbf231fa0c105259ae"
+    },
+    {
+      "path": "public/assets/fishing/character/frame_03.png",
+      "size": 163970,
+      "sha256": "bb0baf2c6375fd85062573e3dcb605524fbc1ad9a37aec5564e199c7b2ba22e7"
+    },
+    {
+      "path": "public/assets/fishing/character/frame_04.png",
+      "size": 169117,
+      "sha256": "d3c82348e0668a40f8cad52b69aba358cae24f5a79637dcfb705135fc4e4d7aa"
+    },
+    {
+      "path": "public/assets/fishing/character/frame_05.png",
+      "size": 159171,
+      "sha256": "f048cc8a9dd6083edc1ec533abb45c5a7708126962d4115da9483c217de1719b"
+    },
+    {
+      "path": "public/assets/fishing/character/frame_06.png",
+      "size": 157802,
+      "sha256": "2282ce67c1001a17ec1296e94cade456c8beb8b15c1f6aea18af84d3b6a52129"
+    },
+    {
+      "path": "public/assets/fishing/character/preview.gif",
+      "size": 326714,
+      "sha256": "333af1cb1eb5c28a06002bb81f2b10612ef1d271fafe96171361740281c5616c"
+    },
+    {
+      "path": "public/assets/fishing/character/sprite_sheet_6_frames.png",
+      "size": 967977,
+      "sha256": "c5e487e5a1aeb0416a57c5b30ad14cadb23f7c6cc084221f3f04a4f62a60b183"
+    },
+    {
+      "path": "scripts/cleanup-legacy-fishing-assets.mjs",
+      "size": 623,
+      "sha256": "f1feb9f4ddad4e90df2fcc4608acfa5e5fdf858d824eb720cc9bbbb8b59ccd94"
+    },
+    {
+      "path": "scripts/verify-fishing-patch.mjs",
+      "size": 2151,
+      "sha256": "7ac30d3a09c49c97eda1e12c7f6d6d6bb9383d30bc209dbe7eaf10a9cbd08e9d"
+    },
+    {
+      "path": "src/app/audio/audioManager.ts",
+      "size": 5698,
+      "sha256": "c2f607f3b4a749ffa773ce772086fd4329d25550a1fa9138e2beff0b84a76784"
+    },
+    {
+      "path": "src/app/components/AppErrorBoundary.tsx",
+      "size": 1986,
+      "sha256": "938a3a4037431ef96fbfeb280e659336187cc8b086a1f211ed796367876f9d43"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/DockHud.tsx",
+      "size": 9173,
+      "sha256": "5fa7f9ca67d92040793c5854aa5c92a712da7a6d89e04e9d3d5203c1d25fc6ee"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/FishingDockCanvas.tsx",
+      "size": 39325,
+      "sha256": "71ae047c0ba96fa57351b3f01153774551d128c1d38b0a0e2b1ae19eb46f8989"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/FishingDockScreen.tsx",
+      "size": 14056,
+      "sha256": "46e4e2a809a06b4b132f0938f20c230e688720429c403b62bbc34d5d0bfc8369"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/FishingPowerGauge.ts",
+      "size": 4581,
+      "sha256": "92ea1d1719a1e6b3edfe8f0d17f4ad6e2ab17de6c5997a0ed06a1393c99276bb"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/fishing-dock-screen.css",
+      "size": 6144,
+      "sha256": "75d91ad9aecea16f311438ce5015c7cc0ad323e9891e7597fdf879602ab35a8a"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/fishingAnimation.test.ts",
+      "size": 759,
+      "sha256": "e1a6dfa68c7cab8dd1dca3d97cc381cdb31764282395647aaf0ae6a8dce83596"
+    },
+    {
+      "path": "src/app/components/bat-ca/dock/fishingAnimation.ts",
+      "size": 1581,
+      "sha256": "c798a6e93c70860aeb309ba02de4968eab0972afaa6c9fcc595acc17a5518f3e"
+    },
+    {
+      "path": "src/app/observability/runtimeErrors.ts",
+      "size": 2117,
+      "sha256": "c025a39bbd3ba9c4bd5248f3793c3634e3126346c172a2cd0fbb604eab5ef660"
+    },
+    {
+      "path": "src/main.tsx",
+      "size": 549,
+      "sha256": "32176e54e9b3998cf82e4fba45880fcc62c5783cf0f61503f284ee3d88327fb5"
+    }
+  ]
+}

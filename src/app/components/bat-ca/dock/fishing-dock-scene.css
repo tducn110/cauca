@@ -2,7 +2,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #176fcd;
+  background: #052c62;
 }
 
 .fishing-dock-canvas__element {
@@ -47,8 +47,7 @@
   left: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 10%, rgba(98, 207, 255, 0.18), transparent 42%),
-    linear-gradient(180deg, rgba(36, 156, 231, 0.96), #176fca 40%, #17519a 72%, #102e68 100%);
+    linear-gradient(180deg, #249ce7, #1a7ad8 4%, #176fca 10%, #0f5cb8 22%, #0a4a9a 40%, #073a7c 65%, #052c62 100%);
 }
 
 .fishing-dock-canvas__channel {
@@ -59,8 +58,7 @@
   width: var(--dock-channel-width, 371px);
   border-radius: 42% 46% 31% 37% / 12% 14% 6% 8%;
   background:
-    radial-gradient(ellipse at 50% 18%, rgba(125, 225, 255, 0.3), transparent 42%),
-    linear-gradient(180deg, rgba(48, 174, 255, 0.58), rgba(31, 124, 231, 0.3));
+    linear-gradient(180deg, rgba(48, 174, 255, 0.12), rgba(31, 124, 231, 0.06));
   clip-path: polygon(29% 0, 71% 0, 86% 100%, 14% 100%);
 }
 
@@ -88,8 +86,8 @@
   left: var(--dock-boat-anchor-x, 785px);
   width: var(--dock-character-width, 240px);
   height: auto;
-  transform: translate(-50%, -90%) scaleX(-1);
-  transform-origin: 50% 90%;
+  transform: translate(-50%, -94.27%) scaleX(-1);
+  transform-origin: 50% 94.27%;
   filter: drop-shadow(0 9px 6px rgba(13, 51, 96, 0.22));
   animation: fishing-dock-character-bob 3.2s ease-in-out infinite;
 }
@@ -238,8 +236,8 @@
 }
 
 @keyframes fishing-dock-character-bob {
-  0%, 100% { transform: translate(-50%, -100%) scaleX(-1) translateY(0) rotate(-0.45deg); }
-  50% { transform: translate(-50%, -100%) scaleX(-1) translateY(-3px) rotate(0.45deg); }
+  0%, 100% { transform: translate(-50%, -94.27%) scaleX(-1) translateY(0) rotate(-0.45deg); }
+  50% { transform: translate(-50%, -94.27%) scaleX(-1) translateY(2px) rotate(0.45deg); }
 }
 
 @keyframes fishing-dock-rear-wave {

@@ -1,6 +1,6 @@
-import { Volume2, VolumeX, Globe, X, Check } from "lucide-react";
+import { Volume2, VolumeX, X } from "lucide-react";
 import { useState } from "react";
-import { loadSave, saveProgress, type LanguageCode } from "../game/storage";
+import { loadSave, saveProgress } from "../game/storage";
 import { gameAudio } from "../../../audio/audioManager";
 import "./fishing-dock-screen.css";
 
@@ -27,134 +27,92 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
     setSave((s) => ({ ...s, audioSettings: { ...s.audioSettings, music: nextMusic } }));
   };
 
-  const handleSelectLang = (lang: LanguageCode) => {
-    gameAudio.play("click");
-    saveProgress({ language: lang });
-    setSave((s) => ({ ...s, language: lang }));
-  };
-
   return (
     <div className="fishing-dock-screen__backdrop" onClick={onClose}>
       <section
-        className="fishing-dock-screen__panel settings-modal-content max-w-md w-full p-6 bg-slate-900/95 text-white rounded-3xl border border-slate-700 shadow-2xl backdrop-blur-xl"
+        className="w-[min(380px,100%)] rounded-[32px] bg-white border-4 border-black border-b-[8px] overflow-hidden flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-labelledby="settings-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
-          <h2 id="settings-modal-title" className="text-xl font-bold text-slate-100">
-            Cài Đặt Game
+        {/* Header */}
+        <div className="bg-white p-5 text-center relative border-b-4 border-black">
+          <h2 id="settings-modal-title" className="text-2xl font-black text-black m-0 uppercase tracking-wide">
+            Cài Đặt
           </h2>
           <button
             type="button"
-            className="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border-2 border-black border-b-[4px] active:border-b-2 active:translate-y-[2px]"
             onClick={onClose}
             aria-label="Đóng"
           >
-            <X size={20} />
+            <X size={20} strokeWidth={3.5} />
           </button>
         </div>
 
-        <div className="space-y-4">
+        {/* Body */}
+        <div className="p-6 space-y-4 bg-white">
           {/* Sound Toggle */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          <div className="flex items-center justify-between p-4 rounded-[20px] bg-white border-4 border-black border-b-[6px]">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-[14px] bg-white text-black flex items-center justify-center border-2 border-black">
+                {muted ? <VolumeX size={24} strokeWidth={3} /> : <Volume2 size={24} strokeWidth={3} />}
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-200">Âm thanh hiệu ứng</h3>
-                <p className="text-xs text-slate-400">Tiếng cá cắn câu, nâng cấp, bấm nút</p>
+                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">Âm thanh</h3>
+                <p className="text-[11.5px] font-bold text-gray-500 mt-1 leading-tight">Hiệu ứng game</p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={handleToggleSound}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`w-[80px] py-2.5 rounded-xl font-black uppercase text-sm transition-all flex items-center justify-center border-2 border-black border-b-[4px] active:border-b-2 active:translate-y-[2px] ${
                 !muted
-                  ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
-                  : "bg-slate-700 text-slate-400"
+                  ? "bg-orange-500 text-white"
+                  : "bg-white text-black"
               }`}
             >
-              {!muted ? "Đang Bật" : "Tắt"}
+              {!muted ? "Bật" : "Tắt"}
             </button>
           </div>
 
           {/* Music Toggle */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                <Volume2 size={20} />
+          <div className="flex items-center justify-between p-4 rounded-[20px] bg-white border-4 border-black border-b-[6px]">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-[14px] bg-white text-black flex items-center justify-center border-2 border-black">
+                <Volume2 size={24} strokeWidth={3} />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-slate-200">Nhạc nền</h3>
-                <p className="text-xs text-slate-400">Giai điệu thư giãn ao làng</p>
+                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">Nhạc nền</h3>
+                <p className="text-[11.5px] font-bold text-gray-500 mt-1 leading-tight">Giai điệu thư giãn</p>
               </div>
             </div>
 
             <button
               type="button"
               onClick={handleToggleMusic}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`w-[80px] py-2.5 rounded-xl font-black uppercase text-sm transition-all flex items-center justify-center border-2 border-black border-b-[4px] active:border-b-2 active:translate-y-[2px] ${
                 save.audioSettings.music
-                  ? "bg-purple-500 text-white shadow-md shadow-purple-500/20"
-                  : "bg-slate-700 text-slate-400"
+                  ? "bg-orange-500 text-white"
+                  : "bg-white text-black"
               }`}
             >
-              {save.audioSettings.music ? "Đang Bật" : "Tắt"}
+              {save.audioSettings.music ? "Bật" : "Tắt"}
             </button>
           </div>
 
-          {/* Language Selector */}
-          <div className="p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700/60">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <Globe size={20} />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm text-slate-200">Ngôn ngữ / Language</h3>
-                <p className="text-xs text-slate-400">Chọn ngôn ngữ hiển thị giao diện</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleSelectLang("vi")}
-                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
-                  save.language === "vi"
-                    ? "bg-amber-500/20 border-amber-500 text-amber-300"
-                    : "bg-slate-900/50 border-slate-700 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                🇻🇳 Tiếng Việt {save.language === "vi" && <Check size={14} />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleSelectLang("en")}
-                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition-all ${
-                  save.language === "en"
-                    ? "bg-amber-500/20 border-amber-500 text-amber-300"
-                    : "bg-slate-900/50 border-slate-700 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                🇺🇸 English {save.language === "en" && <Check size={14} />}
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full mt-2 bg-yellow-400 text-black border-4 border-black border-b-[6px] font-black text-xl py-3.5 rounded-[20px] uppercase tracking-wider transition-all active:border-b-[4px] active:translate-y-[2px]"
+          >
+            Quay về
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full mt-6 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-sm transition-colors border border-slate-700"
-        >
-          Hoàn tất
-        </button>
       </section>
     </div>
   );
 }
+

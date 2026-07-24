@@ -1,3 +1,5 @@
+import { reportRuntimeError } from "../observability/runtimeErrors";
+
 export type AudioCue = "click" | "buy" | "sell" | "level" | "fail" | "boom";
 
 const STORE_KEY = "batca-audio-muted";
@@ -40,7 +42,15 @@ class ProceduralAudioManager {
     if (this.master && this.context) {
       this.master.gain.setTargetAtTime(muted ? 0 : MASTER_VOLUME, this.context.currentTime, 0.02);
     }
-    if (!muted) void this.unlock();
+    if (!muted) {
+      void this.unlock().catch((error) => {
+        reportRuntimeError(error, {
+          area: "audio",
+          operation: "unlock:setMuted",
+          fatal: false,
+        });
+      });
+    }
   }
 
   async unlock(): Promise<void> {
@@ -67,16 +77,39 @@ class ProceduralAudioManager {
 
   setPageHidden(hidden: boolean): void {
     if (!this.context) return;
-    if (hidden) {
-      void this.context.suspend();
-    } else if (!this.muted) {
-      void this.context.resume();
+    const operation = hidden ? this.context.suspend() : (!this.muted ? this.context.resume() : null);
+    if (operation) {
+      void operation.catch((error) => {
+        reportRuntimeError(error, {
+          area: "audio",
+          operation: hidden ? "suspend" : "resume",
+          fatal: false,
+        });
+      });
     }
   }
 
   play(cue: AudioCue): void {
     if (this.muted) return;
-    void this.unlock().then(() => this.playUnlocked(cue));
+    void this.unlock()
+      .then(() => {
+        try {
+          this.playUnlocked(cue);
+        } catch (error) {
+          reportRuntimeError(error, {
+            area: "audio",
+            operation: `play:${cue}`,
+            fatal: false,
+          });
+        }
+      })
+      .catch((error) => {
+        reportRuntimeError(error, {
+          area: "audio",
+          operation: `unlock:${cue}`,
+          fatal: false,
+        });
+      });
   }
 
   private playUnlocked(cue: AudioCue): void {
@@ -141,7 +174,15 @@ export const gameAudio = new ProceduralAudioManager();
 export function installAudioLifecycle(): () => void {
   if (typeof window === "undefined" || typeof document === "undefined") return () => {};
 
-  const unlock = () => void gameAudio.unlock();
+  const unlock = () => {
+    void gameAudio.unlock().catch((error) => {
+      reportRuntimeError(error, {
+        area: "audio",
+        operation: "unlock:lifecycle",
+        fatal: false,
+      });
+    });
+  };
   const onVisibilityChange = () => gameAudio.setPageHidden(document.hidden);
 
   window.addEventListener("pointerdown", unlock, { passive: true });

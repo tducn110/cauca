@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { Anchor, Coins, Fish, Gift, Settings, Trophy } from "lucide-react";
+import { Anchor, ArrowUp, Fish, Gift, Settings, Trophy } from "lucide-react";
 
 import type { DockUpgradeType } from "./progression";
 import "./fishing-dock.css";
@@ -39,15 +39,15 @@ const UPGRADE_ORDER: readonly DockUpgradeId[] = ["capacity", "depth", "offlineRa
 const UPGRADE_META = {
   capacity: {
     label: "SỨC CHỨA",
-    renderIcon: () => <Fish size={18} strokeWidth={2.8} className="text-[#0284c7]" />,
+    renderIcon: () => <img src="/ui/upgrades/icon_addfish.png" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
   depth: {
     label: "ĐỘ SÂU",
-    renderIcon: () => <Anchor size={18} strokeWidth={2.8} className="text-[#ea580c]" />,
+    renderIcon: () => <img src="/ui/upgrades/icon_depth.png" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
   offlineRate: {
     label: "THU NHẬP RẢNH",
-    renderIcon: () => <Coins size={18} strokeWidth={2.8} className="text-[#16a34a]" />,
+    renderIcon: () => <img src="/ui/upgrades/iconMoney.png" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
 } as const;
 
@@ -101,7 +101,7 @@ function FloatingUpgradeArrow({ active }: { active: boolean }) {
 
   return (
     <span ref={arrowRef} className="fishing-dock-hud__upgrade-arrow" aria-hidden="true">
-      <img src="/assets/fishing/ui/icon_arrow.png" alt="" className="fishing-dock-hud__upgrade-arrow-img" />
+      <ArrowUp className="fishing-dock-hud__upgrade-arrow-img" strokeWidth={3.2} />
     </span>
   );
 }
@@ -161,7 +161,7 @@ export function DockHud({
       </div>
 
       {/* Left Rail Menu Buttons — Pill/Rectangular Buttons with overlay animations */}
-      <nav className="fishing-dock-hud__rail" aria-label="Đồ nghề và quà">
+      <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--left" aria-label="Đồ nghề và quà">
         <button
           className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
           type="button"
@@ -173,19 +173,6 @@ export function DockHud({
           <Anchor aria-hidden="true" strokeWidth={2.8} />
           <span>LƯỠI CÂU</span>
           <small>Cấp {safeHooksLevel}</small>
-        </button>
-
-        <button
-          className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
-          type="button"
-          onClick={onOpenAquarium}
-          disabled={interactionLocked}
-          aria-label="Mở Thủy cung"
-          title="Thủy cung"
-        >
-          <Fish aria-hidden="true" strokeWidth={2.8} />
-          <span>THỦY CUNG</span>
-          <small>Bộ sưu tập</small>
         </button>
 
         <button
@@ -201,6 +188,22 @@ export function DockHud({
           <Gift aria-hidden="true" strokeWidth={2.8} />
           <span>{giftReady ? "NHẬN QUÀ" : "QUÀ TẶNG"}</span>
           <small>{giftReady ? "Sẵn sàng" : formatCooldown(giftRemainingMs)}</small>
+        </button>
+      </nav>
+
+      {/* Right Rail Menu Buttons */}
+      <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--right" aria-label="Thủy cung">
+        <button
+          className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
+          type="button"
+          onClick={onOpenAquarium}
+          disabled={interactionLocked}
+          aria-label="Mở Thủy cung"
+          title="Thủy cung"
+        >
+          <Fish aria-hidden="true" strokeWidth={2.8} />
+          <span>THỦY CUNG</span>
+          <small>Bộ sưu tập</small>
         </button>
       </nav>
 
@@ -238,11 +241,13 @@ export function DockHud({
 
               {/* White Upper Card Section */}
               <span className="fishing-dock-hud__upgrade-heading">
-                {meta.renderIcon()}
                 <span>{meta.label}</span>
               </span>
 
-              <strong className="fishing-dock-hud__upgrade-value">{upgrade.value}</strong>
+              <div className="fishing-dock-hud__upgrade-body">
+                {meta.renderIcon()}
+                <strong className="fishing-dock-hud__upgrade-value">Cấp {upgrade.value}</strong>
+              </div>
 
               {/* Bottom Price Pill Section */}
               <span className="fishing-dock-hud__upgrade-price">{priceLabel}</span>

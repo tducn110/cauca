@@ -27,39 +27,47 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onClaim
   return (
     <div className="fishing-dock-screen__backdrop" onClick={handleClaim}>
       <section
-        className="fishing-dock-screen__panel offline-modal-content max-w-sm w-full p-6 bg-slate-900/95 text-white rounded-3xl border border-amber-500/40 shadow-2xl backdrop-blur-xl text-center"
+        className="w-[min(380px,100%)] rounded-[32px] bg-white border-4 border-black border-b-[8px] overflow-hidden flex flex-col text-center"
         role="dialog"
         aria-modal="true"
         aria-labelledby="offline-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-16 h-16 rounded-full bg-amber-500/20 border-2 border-amber-400 text-amber-400 mx-auto flex items-center justify-center mb-4 shadow-lg shadow-amber-500/20">
-          <Gift size={32} />
+        {/* Header */}
+        <div className="bg-white p-5 text-center relative border-b-4 border-black">
+          <h2 id="offline-modal-title" className="text-2xl font-black text-black m-0 uppercase tracking-wide">
+            Quà Vắng Mặt
+          </h2>
         </div>
 
-        <h2 id="offline-modal-title" className="text-xl font-bold text-amber-300">
-          Thu Nhập Vắng Mặt!
-        </h2>
+        {/* Body */}
+        <div className="p-6 space-y-5 bg-white flex flex-col items-center">
+          <div className="w-20 h-20 rounded-[20px] bg-orange-100 border-4 border-black border-b-[6px] text-orange-500 flex items-center justify-center -mt-2">
+            <Gift size={44} strokeWidth={2.5} />
+          </div>
 
-        <p className="text-xs text-slate-300 mt-1 mb-4 flex items-center justify-center gap-1.5">
-          <Clock size={14} className="text-amber-400" />
-          Bạn đã nghỉ ngơi trong <strong>{timeStr}</strong>
-        </p>
+          <div className="w-full">
+            <p className="text-xs font-bold text-gray-500 uppercase flex items-center justify-center gap-1.5 mb-3">
+              <Clock size={16} strokeWidth={3} className="text-black" />
+              Nghỉ ngơi <strong>{timeStr}</strong>
+            </p>
 
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 my-4 flex items-center justify-center gap-3">
-          <Coins size={28} className="text-amber-400" />
-          <span className="text-2xl font-extrabold text-amber-300">
-            +{amount.toLocaleString("vi-VN")}đ
-          </span>
+            <div className="w-full p-4 rounded-[20px] bg-yellow-400 border-4 border-black border-b-[6px] flex items-center justify-center gap-2">
+              <Coins size={28} strokeWidth={2.5} className="text-black" />
+              <span className="text-3xl font-black text-black tracking-tighter">
+                +{amount.toLocaleString("vi-VN")}đ
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleClaim}
+            className="w-full mt-2 bg-orange-500 text-white border-4 border-black border-b-[6px] font-black text-xl py-3.5 rounded-[20px] uppercase tracking-wider transition-all active:border-b-[4px] active:translate-y-[2px]"
+          >
+            Nhận Quà
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={handleClaim}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-extrabold text-sm shadow-lg shadow-amber-500/20 transition-all transform active:scale-98"
-        >
-          Nhận Tiền Vắng Mặt
-        </button>
       </section>
     </div>
   );

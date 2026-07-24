@@ -18,6 +18,7 @@ import { SettingsModal } from "./SettingsModal";
 import { AquariumPanel } from "./AquariumPanel";
 import { OfflineEarningsModal } from "./OfflineEarningsModal";
 import { calculateOfflineEarnings } from "../game/storage";
+import { reportRuntimeError } from "../../../observability/runtimeErrors";
 import "./fishing-dock-screen.css";
 
 type DockPanel = "settings" | "hooks" | "aquarium" | null;
@@ -54,6 +55,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const [offlineEarningsData, setOfflineEarningsData] = useState<{ amount: number; eligibleMinutes: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [launchResult, setLaunchResult] = useState<PowerLockResult | null>(null);
+  const [sceneError, setSceneError] = useState<string | null>(null);
 
   // Explicit Fishing Phase state
   const [phase, setPhase] = useState<FishingPhase>("dock");
@@ -78,10 +80,18 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
 
   // Check offline earnings on mount
   useEffect(() => {
-    const offline = calculateOfflineEarnings();
-    if (offline.amount > 0 && offline.eligibleMinutes >= 1) {
-      setOfflineEarningsData({ amount: offline.amount, eligibleMinutes: offline.eligibleMinutes });
-      setShowOfflineModal(true);
+    try {
+      const offline = calculateOfflineEarnings();
+      if (offline.amount > 0 && offline.eligibleMinutes >= 1) {
+        setOfflineEarningsData({ amount: offline.amount, eligibleMinutes: offline.eligibleMinutes });
+        setShowOfflineModal(true);
+      }
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "FishingDockScreen",
+        operation: "calculateOfflineEarnings",
+        fatal: false,
+      });
     }
   }, []);
 
@@ -109,14 +119,19 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       frame = window.requestAnimationFrame(commitLayout);
     };
 
-    const resizeObserver = new ResizeObserver(scheduleLayout);
-    resizeObserver.observe(screen);
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(scheduleLayout);
+
+    resizeObserver?.observe(screen);
+    window.addEventListener("resize", scheduleLayout);
     window.visualViewport?.addEventListener("resize", scheduleLayout);
     commitLayout();
 
     return () => {
       window.cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", scheduleLayout);
       window.visualViewport?.removeEventListener("resize", scheduleLayout);
     };
   }, []);
@@ -167,24 +182,42 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   }), [progression]);
 
   const buyUpgrade = (type: DockUpgradeType) => {
-    const result = progression.purchaseUpgrade(type);
-    if (result.purchased) {
-      gameAudio.play("buy");
-      showNotice("Nâng cấp thành công");
-      return;
+    try {
+      const result = progression.purchaseUpgrade(type);
+      if (result.purchased) {
+        gameAudio.play("buy");
+        showNotice("Nâng cấp thành công");
+        return;
+      }
+      gameAudio.play("click");
+      showNotice(result.reason === "max-level" ? "Đã nâng tối đa" : "Chưa đủ tiền");
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "FishingDockScreen",
+        operation: `purchaseUpgrade:${type}`,
+        fatal: false,
+      });
+      showNotice("Không thể nâng cấp lúc này");
     }
-    gameAudio.play("click");
-    showNotice(result.reason === "max-level" ? "Đã nâng tối đa" : "Chưa đủ tiền");
   };
 
   const claimGift = () => {
-    const result = progression.claimGift();
-    if (result.claimed) {
-      gameAudio.play("sell");
-      showNotice(`Nhận ${result.amount.toLocaleString("vi-VN")}đ`);
-    } else if (result.reason === "wallet-full") {
-      gameAudio.play("click");
-      showNotice("Ví đã đầy");
+    try {
+      const result = progression.claimGift();
+      if (result.claimed) {
+        gameAudio.play("sell");
+        showNotice(`Nhận ${result.amount.toLocaleString("vi-VN")}đ`);
+      } else if (result.reason === "wallet-full") {
+        gameAudio.play("click");
+        showNotice("Ví đã đầy");
+      }
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "FishingDockScreen",
+        operation: "claimGift",
+        fatal: false,
+      });
+      showNotice("Không thể nhận quà lúc này");
     }
   };
 
@@ -192,17 +225,28 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     if (phase !== "dock" || panel !== null || showOfflineModal) return;
     setLaunchResult(result);
     gameAudio.play(result.label === "MAX" ? "level" : "click");
+    if (launchTimerRef.current !== null) window.clearTimeout(launchTimerRef.current);
     launchTimerRef.current = window.setTimeout(() => {
       launchTimerRef.current = null;
       setLaunchResult(null);
-    }, 720);
+    }, 300);
   };
 
   const handleCatchComplete = (summary: CatchSummary) => {
     const prevBest = progression.bestRunScore;
-    progression.recordCatch(summary.earned, summary.caughtFishTypes);
-    const newBest = summary.earned > 0 && summary.earned > prevBest;
 
+    try {
+      progression.recordCatch(summary.earned, summary.caughtFishTypes);
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "FishingDockScreen",
+        operation: "recordCatch",
+        fatal: false,
+        metadata: { earned: summary.earned, caughtCount: summary.caughtCount },
+      });
+    }
+
+    const newBest = summary.earned > 0 && summary.earned > prevBest;
     setIsNewBest(newBest);
     setLastCatchSummary(summary);
     setPhase("result");
@@ -216,14 +260,25 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     caughtCount: number,
     runEarnings: number,
   ) => {
-    if (state === "idle") {
-      setPhase("dock");
-    } else if (state === "casting") {
-      setPhase("casting");
-    } else if (state === "descending") {
-      setPhase("descending");
-    } else if (state === "ascending") {
-      setPhase("ascending");
+    const nextPhase: FishingPhase | null =
+      state === "idle"
+        ? "dock"
+        : state === "casting"
+          ? "casting"
+          : state === "descending"
+            ? "descending"
+            : state === "ascending"
+              ? "ascending"
+              : state === "surfaceBurst" || state === "payout"
+                ? "result"
+                : null;
+
+    if (nextPhase) {
+      setPhase((current) => (
+        current === "result" && nextPhase === "dock"
+          ? current
+          : nextPhase
+      ));
     }
 
     setActiveFishingInfo({
@@ -241,7 +296,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     setLastCatchSummary(null);
   };
 
-  const isInteractionLocked = phase !== "dock" || launchResult !== null || panel !== null || showOfflineModal;
+  const isInteractionLocked = phase !== "dock" || launchResult !== null || panel !== null || showOfflineModal || sceneError !== null;
   const isUnderwater = phase === "descending" || phase === "ascending";
 
   return (
@@ -260,6 +315,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
         onPowerLock={lockPower}
         onCatchComplete={handleCatchComplete}
         onStateChange={handleStateChange}
+        onSceneError={(message) => setSceneError(message)}
         disabled={isInteractionLocked}
       />
 
@@ -293,13 +349,8 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       {isUnderwater && (
         <UnderwaterHud
           state={phase === "descending" ? "descending" : "ascending"}
-          depthMeters={activeFishingInfo.depthMeters}
-          maxDepthMeters={activeFishingInfo.maxDepthMeters}
-          capacity={activeFishingInfo.capacity}
           caughtCount={activeFishingInfo.caughtCount}
-          runEarnings={activeFishingInfo.runEarnings}
-          muted={muted}
-          onToggleMute={onToggleMute}
+          layout={layout}
         />
       )}
 
@@ -313,6 +364,14 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       )}
 
       {notice && <div className="fishing-dock-screen__notice" role="status">{notice}</div>}
+      {sceneError && (
+        <div className="fishing-dock-screen__scene-error" role="alert">
+          {sceneError}
+          <button type="button" onClick={() => window.location.reload()}>
+            Tải lại
+          </button>
+        </div>
+      )}
       {launchResult && (
         <div className={`fishing-dock-screen__power-result is-${launchResult.label.toLowerCase()}`} aria-live="assertive">
           {launchResult.label}

@@ -1,4 +1,5 @@
 import { Circle, Container, Sprite, type Texture } from "pixi.js";
+import { reportRuntimeError } from "../../../observability/runtimeErrors";
 
 export type PowerLabel = "MAX" | "TỐT" | "ỔN" | "YẾU";
 
@@ -114,7 +115,15 @@ export class FishingPowerGauge extends Container {
 
     const result = powerResultAtAngle(this.needleAngle);
 
-    this.onLock(result);
+    try {
+      this.onLock(result);
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "FishingPowerGauge",
+        operation: "onLock",
+        fatal: false,
+      });
+    }
     return result;
   }
 

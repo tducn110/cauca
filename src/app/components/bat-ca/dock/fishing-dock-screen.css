@@ -20,7 +20,7 @@
   min-height: 100dvh;
   overflow: hidden;
   isolation: isolate;
-  background: #176ff3;
+  background: #052c62;
   color: #30274f;
   font-family: "Be Vietnam Pro", system-ui, sans-serif;
 }
@@ -77,8 +77,8 @@
 .fishing-dock-screen__power-result {
   top: calc(var(--dock-gauge-center-y) - var(--dock-gauge-size) * 0.92);
   color: #ffe42e;
-  font-size: clamp(34px, 5vw, 66px);
-  animation: dock-result-pop 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  font-size: clamp(18px, 2.2vw, 28px);
+  animation: dock-result-pop 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes dock-notice {
@@ -87,9 +87,9 @@
 }
 
 @keyframes dock-result-pop {
-  0% { opacity: 0; transform: translate(-50%, 18px) scale(0.7); }
-  34% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
-  100% { opacity: 0; transform: translate(-50%, -18px) scale(1); }
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+  30% { opacity: 1; transform: translate(-50%, 0) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -8px) scale(1); }
 }
 
 .fishing-dock-screen__backdrop {
@@ -243,6 +243,41 @@
   background: #ff681c;
   color: #fff;
   text-shadow: 0 2px 0 #a72d09;
+}
+
+
+.fishing-dock-screen__scene-error {
+  position: absolute;
+  z-index: 70;
+  top: calc(var(--dock-safe-top) + 8px);
+  left: 50%;
+  display: flex;
+  width: min(520px, calc(100% - 32px));
+  min-height: 48px;
+  padding: 10px 12px 10px 16px;
+  transform: translateX(-50%);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
+  background: rgba(126, 28, 28, 0.94);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(31, 19, 53, 0.28);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.fishing-dock-screen__scene-error button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #fff;
+  color: #7e1c1c;
+  font: inherit;
+  cursor: pointer;
 }
 
 @media (max-width: 700px) {

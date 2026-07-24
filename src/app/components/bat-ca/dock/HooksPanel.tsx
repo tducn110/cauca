@@ -43,45 +43,38 @@ export function HooksPanel({ onClose, onNotice }: Props) {
   const allUnlocked = save.unlockedHooks.length >= HOOK_DEFINITIONS.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200" onClick={onClose}>
+    <div className="fishing-dock-screen__backdrop" onClick={onClose}>
       <div
-        className="relative w-full max-w-lg p-6 bg-gradient-to-b from-[#1b65d3] to-[#124ba3] text-white rounded-3xl border-2 border-white/20 shadow-2xl flex flex-col items-center gap-5"
+        className="w-full max-w-lg rounded-[32px] bg-white border-4 border-black border-b-[8px] overflow-hidden flex flex-col max-h-[calc(100dvh-40px)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="hooks-panel-title"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Top Left Coin Counter Badge */}
-        <div className="absolute top-5 left-5 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/40 border border-white/20 text-white font-extrabold text-sm shadow-md">
-          <span className="text-amber-400">🟡</span>
-          <span>{save.money.toLocaleString("vi-VN")}</span>
-        </div>
-
-        {/* Top Right Close Button */}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-5 right-5 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center border border-white/20 transition-all active:scale-95 shadow-md cursor-pointer"
-          aria-label="Đóng"
-        >
-          <X size={20} />
-        </button>
-
-        {/* Center Title with Wavy Underline */}
-        <div className="flex flex-col items-center mt-1">
-          <h2 id="hooks-panel-title" className="text-3xl font-black tracking-wider uppercase text-white drop-shadow-md">
-            LƯỠI CÂU
-          </h2>
-          {/* Wavy Underline */}
-          <div className="w-24 h-2 mt-1 text-sky-300 flex justify-center">
-            <svg viewBox="0 0 100 20" className="w-full h-full fill-none stroke-current stroke-[4]">
-              <path d="M0,10 Q25,0 50,10 T100,10" />
-            </svg>
+        {/* Header */}
+        <div className="bg-white p-5 text-center relative border-b-4 border-black flex-shrink-0">
+          {/* Coin Badge */}
+          <div className="absolute top-1/2 -translate-y-1/2 left-4 px-3 py-1.5 rounded-full bg-yellow-100 border-2 border-black border-b-[4px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
+            <span className="text-amber-500"><Coins size={16} strokeWidth={3} /></span>
+            <span>{save.money.toLocaleString("vi-VN")}</span>
           </div>
+
+          <h2 id="hooks-panel-title" className="text-xl sm:text-2xl font-black text-black m-0 uppercase tracking-wide">
+            Lưỡi Câu
+          </h2>
+
+          <button
+            type="button"
+            className="absolute top-1/2 -translate-y-1/2 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border-2 border-black border-b-[4px] active:border-b-2 active:translate-y-[2px]"
+            onClick={onClose}
+            aria-label="Đóng"
+          >
+            <X size={20} strokeWidth={3.5} />
+          </button>
         </div>
 
-        {/* 3x3 Grid of 9 Hook Slots (white rounded cards) */}
-        <div className="grid grid-cols-3 gap-3.5 w-full my-2">
+        {/* 3x3 Grid of 9 Hook Slots */}
+        <div className="p-5 grid grid-cols-3 gap-3 overflow-y-auto bg-gray-50">
           {HOOK_DEFINITIONS.slice(0, 9).map((hook: HookDefinition) => {
             const isUnlocked = save.unlockedHooks.includes(hook.id);
             const isSelected = save.selectedHook === hook.id;
@@ -92,27 +85,27 @@ export function HooksPanel({ onClose, onNotice }: Props) {
                 type="button"
                 onClick={() => isUnlocked && handleSelect(hook.id)}
                 disabled={!isUnlocked}
-                className={`relative aspect-square rounded-2xl flex items-center justify-center p-3 transition-all cursor-pointer ${
+                className={`relative aspect-square rounded-[20px] flex items-center justify-center p-3 transition-all border-2 border-black ${
                   isSelected
-                    ? "bg-white border-4 border-[#ff6b00] shadow-[0_0_18px_rgba(255,107,0,0.6)] scale-[1.03]"
+                    ? "bg-yellow-100 border-b-[6px] -translate-y-1"
                     : isUnlocked
-                    ? "bg-white/95 border-2 border-white hover:bg-white hover:scale-[1.02] shadow-md"
-                    : "bg-white/40 border-2 border-white/30 opacity-60 cursor-not-allowed"
+                    ? "bg-white border-b-[4px] hover:bg-gray-100 active:border-b-2 active:translate-y-[2px] cursor-pointer"
+                    : "bg-gray-200 border-b-[4px] opacity-60 cursor-not-allowed"
                 }`}
                 title={isUnlocked ? hook.name : "Chưa mở khóa"}
               >
                 {/* Hook Icon */}
                 <div
-                  className="w-12 h-12 flex items-center justify-center text-slate-800"
-                  style={{ color: isUnlocked ? hook.accentColor || "#1e293b" : "#94a3b8" }}
+                  className="w-12 h-12 flex items-center justify-center transition-colors"
+                  style={{ color: isUnlocked ? hook.accentColor || "#1e293b" : "#9ca3af" }}
                 >
-                  <Anchor size={36} strokeWidth={2.8} />
+                  <Anchor size={36} strokeWidth={isUnlocked ? 3 : 2.5} />
                 </div>
 
                 {/* Orange Selected Badge Marker */}
                 {isSelected && (
-                  <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#ff6b00] text-white flex items-center justify-center shadow-md">
-                    <Sparkles size={13} />
+                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-orange-500 border-2 border-black text-white flex items-center justify-center shadow-sm">
+                    <Sparkles size={14} strokeWidth={3} />
                   </div>
                 )}
               </button>
@@ -120,16 +113,18 @@ export function HooksPanel({ onClose, onNotice }: Props) {
           })}
         </div>
 
-        {/* Bottom UNLOCK RANDOM Pill Button */}
-        <button
-          type="button"
-          disabled={allUnlocked || save.money < RANDOM_HOOK_UNLOCK_PRICE}
-          onClick={handleUnlockRandom}
-          className="px-6 py-3 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white font-black text-sm tracking-wide flex items-center gap-2 shadow-xl hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all border border-amber-300/40 cursor-pointer"
-        >
-          <Coins size={18} className="text-yellow-300" />
-          <span>MỞ KHÓA NGẪU NHIÊN ({RANDOM_HOOK_UNLOCK_PRICE}đ)</span>
-        </button>
+        {/* Bottom Panel */}
+        <div className="p-5 border-t-4 border-black bg-white flex justify-center flex-shrink-0">
+          <button
+            type="button"
+            disabled={allUnlocked || save.money < RANDOM_HOOK_UNLOCK_PRICE}
+            onClick={handleUnlockRandom}
+            className="px-6 py-3 rounded-full bg-orange-400 text-black font-black text-sm uppercase tracking-wide flex items-center gap-2 border-2 border-black border-b-[4px] hover:bg-orange-500 active:border-b-2 active:translate-y-[2px] disabled:opacity-50 disabled:active:border-b-[4px] disabled:active:translate-y-0 disabled:cursor-not-allowed transition-all"
+          >
+            <Coins size={20} strokeWidth={2.5} />
+            <span>Mở khóa ngẫu nhiên ({RANDOM_HOOK_UNLOCK_PRICE}đ)</span>
+          </button>
+        </div>
       </div>
     </div>
   );
