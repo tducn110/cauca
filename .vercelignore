@@ -1,0 +1,4 @@
+.codegraph/
+.vercel/
+node_modules/
+dist/
