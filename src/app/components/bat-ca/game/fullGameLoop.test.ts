@@ -11,9 +11,9 @@ import {
   selectHook,
   recordDiscoveredFish,
   calculateOfflineEarnings,
-  claimOfflineEarnings,
   normalizeSave,
 } from "./storage";
+import { claimOfflineEarnings } from "../dock/progression";
 import { RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
 
 // Setup memory storage for vitest node env
@@ -164,23 +164,23 @@ describe("Offline Earnings System", () => {
 
   it("calculates offline earnings for elapsed time", () => {
     const tenMinsAgo = Date.now() - 10 * 60 * 1000;
-    saveProgress({ lastActiveAt: tenMinsAgo, offlineRateLevel: 0 }); // 5đ/min
+    saveProgress({ lastActiveAt: tenMinsAgo, offlineRateLevel: 0 }); // 8đ/min
 
     const calc = calculateOfflineEarnings(Date.now());
     expect(calc.eligibleMinutes).toBe(10);
-    expect(calc.amount).toBe(50);
+    expect(calc.amount).toBe(80);
   });
 
   it("credits offline earnings exactly once without duplicate credit", () => {
     const thirtyMinsAgo = Date.now() - 30 * 60 * 1000;
-    saveProgress({ money: 100, lastActiveAt: thirtyMinsAgo, offlineRateLevel: 1 }); // 10đ/min
+    saveProgress({ money: 100, lastActiveAt: thirtyMinsAgo, offlineRateLevel: 1 }); // 12đ/min
 
     const firstClaim = claimOfflineEarnings(Date.now());
     expect(firstClaim.claimed).toBe(true);
-    expect(firstClaim.amount).toBe(300);
+    expect(firstClaim.amount).toBe(360);
 
     const saveAfterFirst = loadSave();
-    expect(saveAfterFirst.money).toBe(400);
+    expect(saveAfterFirst.money).toBe(460);
 
     // Immediate second claim attempt (e.g. modal reopen or refresh)
     const secondClaim = claimOfflineEarnings(Date.now());
@@ -188,6 +188,6 @@ describe("Offline Earnings System", () => {
     expect(secondClaim.amount).toBe(0);
 
     const saveAfterSecond = loadSave();
-    expect(saveAfterSecond.money).toBe(400);
+    expect(saveAfterSecond.money).toBe(460);
   });
 });

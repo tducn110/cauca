@@ -1,6 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { gameAudio } from "../../../audio/audioManager";
-import { DEPTH_UPGRADE_DELTA, INITIAL_CAPACITY, INITIAL_MAX_DEPTH } from "../game/constants";
+import {
+  CAPACITY_UPGRADE_DELTA,
+  DEPTH_UPGRADE_DELTA,
+  INITIAL_CAPACITY,
+  INITIAL_MAX_DEPTH,
+} from "../game/constants";
+import { OFFLINE_UPGRADE_COSTS } from "../game/economyConfig";
 import { UPGRADE_META } from "../game/fish-data";
 import { DockHud, type DockUpgradeMap } from "./DockHud";
 import { UnderwaterHud } from "./UnderwaterHud";
@@ -16,12 +22,13 @@ import type { DockUpgradeType } from "./progression";
 import { HooksPanel } from "./HooksPanel";
 import { SettingsModal } from "./SettingsModal";
 import { AquariumPanel } from "./AquariumPanel";
+import { GiftModal } from "./GiftModal";
 import { OfflineEarningsModal } from "./OfflineEarningsModal";
 import { calculateOfflineEarnings } from "../game/storage";
 import { reportRuntimeError } from "../../../observability/runtimeErrors";
 import "./fishing-dock-screen.css";
 
-type DockPanel = "settings" | "hooks" | "aquarium" | null;
+type DockPanel = "settings" | "hooks" | "aquarium" | "gift" | null;
 type FishingPhase = "dock" | "casting" | "descending" | "ascending" | "result";
 
 type Props = {
@@ -47,7 +54,7 @@ function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
 }
 
 export function FishingDockScreen({ muted, onToggleMute }: Props) {
-  const progression = useDockProgression();
+  const progression = useDockProgression({ autoClaimOffline: false });
   const screenRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => createDockLayout());
   const [panel, setPanel] = useState<DockPanel>(null);
@@ -161,7 +168,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     capacity: {
       level: progression.capacityLevel,
       maxLevel: UPGRADE_META.capacity.maxLevel,
-      value: `${INITIAL_CAPACITY + progression.capacityLevel * 2} cá`,
+      value: `${INITIAL_CAPACITY + progression.capacityLevel * CAPACITY_UPGRADE_DELTA} cá`,
       cost: progression.capacityCost,
       affordable: progression.capacityCost !== null && progression.wallet >= progression.capacityCost,
     },
@@ -174,7 +181,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     },
     offlineRate: {
       level: progression.offlineRateLevel,
-      maxLevel: 5,
+      maxLevel: OFFLINE_UPGRADE_COSTS.length,
       value: `${progression.offlineRatePerMinute}đ/phút`,
       cost: progression.offlineRateCost,
       affordable: progression.offlineRateCost !== null && progression.wallet >= progression.offlineRateCost,
@@ -202,23 +209,8 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   };
 
   const claimGift = () => {
-    try {
-      const result = progression.claimGift();
-      if (result.claimed) {
-        gameAudio.play("sell");
-        showNotice(`Nhận ${result.amount.toLocaleString("vi-VN")}đ`);
-      } else if (result.reason === "wallet-full") {
-        gameAudio.play("click");
-        showNotice("Ví đã đầy");
-      }
-    } catch (error) {
-      reportRuntimeError(error, {
-        area: "FishingDockScreen",
-        operation: "claimGift",
-        fatal: false,
-      });
-      showNotice("Không thể nhận quà lúc này");
-    }
+    gameAudio.play("click");
+    setPanel("gift");
   };
 
   const lockPower = (result: PowerLockResult) => {
@@ -391,11 +383,22 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
         <AquariumPanel onClose={() => setPanel(null)} />
       )}
 
+      {panel === "gift" && (
+        <GiftModal
+          onClose={() => setPanel(null)}
+          onNotice={showNotice}
+          onClaimReward={(amount) => progression.claimGift(amount)}
+          giftRemainingMs={progression.giftRemainingMs}
+          wallet={progression.earnings}
+        />
+      )}
+
       {/* Offline Earnings Modal */}
       {showOfflineModal && offlineEarningsData && (
         <OfflineEarningsModal
           amount={offlineEarningsData.amount}
           eligibleMinutes={offlineEarningsData.eligibleMinutes}
+          onClaim={() => progression.claimOffline()}
           onClose={() => setShowOfflineModal(false)}
           onClaimed={(claimedAmount) => showNotice(`Đã nhận +${claimedAmount.toLocaleString("vi-VN")}đ`)}
         />

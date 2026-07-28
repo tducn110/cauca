@@ -27,7 +27,7 @@ export function EndGameScreen({
   const isFail = reason === "target-not-reached" || reason === "time-out";
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(42,36,24,0.85)] backdrop-blur-sm p-3">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-[rgba(10,8,6,0.95)] backdrop-blur-md p-3">
       <div className="bg-cream-card rounded-3xl p-8 max-w-[380px] w-[90%] max-h-full overflow-y-auto shadow-2xl text-center" role="dialog" aria-modal="true" aria-labelledby="batca-end-title">
         {isFail ? (
           <>
@@ -78,7 +78,7 @@ export function EndGameScreen({
 
           <button
             onClick={onShowLeaderboard}
-            className="flex items-center justify-center gap-2 bg-white border-2 border-pencil text-ink-dark font-bold py-3 rounded-full hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-center gap-2 bg-white text-ink-dark font-bold py-3 rounded-full hover:bg-gray-50 transition-colors"
           >
             <BarChart3 size={16} />
             Bảng xếp hạng

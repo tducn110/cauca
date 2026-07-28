@@ -20,7 +20,7 @@ export function HeroSection({ onPlay, best }: Props) {
         <div className="absolute inset-0 bg-gradient-to-b from-[rgba(245,236,215,0.2)] via-transparent to-[rgba(245,236,215,0.55)] pointer-events-none" />
 
         <div className="hero-content relative max-w-[1100px] px-6 py-10 grid grid-cols-1 gap-5 text-center z-10">
-          <div className="hero-badge inline-block mx-auto px-4 py-1.5 rounded-full bg-[rgba(255,255,255,0.7)] border border-pencil text-xs font-bold text-earth-brown tracking-[1.5px]">
+          <div className="hero-badge inline-block mx-auto px-4 py-1.5 rounded-full bg-[rgba(255,255,255,0.7)] border border-[rgba(138,125,101,0.2)] shadow-[0_2px_8px_rgba(42,36,24,0.06)] text-xs font-bold text-earth-brown tracking-[1.5px]">
             MINI GAME · BỘ LẠC ĐẬU PHỘNG
           </div>
 

@@ -27,7 +27,7 @@ export function LeaderboardScreen({
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="w-10 h-10 rounded-full bg-white border border-pencil flex items-center justify-center text-ink-dark"
+            className="w-10 h-10 rounded-full bg-white border border-[rgba(138,125,101,0.2)] shadow-[0_2px_8px_rgba(42,36,24,0.06)] flex items-center justify-center text-ink-dark"
             aria-label="Quay lại"
           >
             <ArrowLeft size={18} />

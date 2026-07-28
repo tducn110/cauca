@@ -48,7 +48,7 @@ export function GameContainer({ onEndGame }: Props) {
       <div className="game-frame">
         <button
           onClick={toggleFullscreen}
-          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[4] w-10 h-10 rounded-full bg-[rgba(255,255,255,0.9)] border border-pencil text-ink-dark font-extrabold cursor-pointer flex items-center justify-center shadow-md"
+          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 z-[4] w-10 h-10 rounded-full bg-[rgba(255,255,255,0.9)] border border-[rgba(138,125,101,0.2)] text-ink-dark font-extrabold cursor-pointer flex items-center justify-center shadow-[0_2px_8px_rgba(42,36,24,0.06)]"
           aria-label={isFullscreen ? "Thoát fullscreen" : "Fullscreen"}
           title={isFullscreen ? "Thoát fullscreen" : "Fullscreen"}
         >

@@ -1,13 +1,21 @@
 import { loadSave, saveProgress, type SaveData } from "../game/storage";
+import {
+  MAX_OFFLINE_ELAPSED_MS,
+  MIN_OFFLINE_ELAPSED_MS,
+  OFFLINE_RATE_PER_MINUTE,
+  OFFLINE_UPGRADE_COSTS,
+} from "../game/economyConfig";
 import { UPGRADE_DEFS, upgradeCost } from "../game/upgrades";
 import type { UpgradeDef } from "../game/upgrades";
 
 export type DockUpgradeType = "capacity" | "depth" | "offlineRate";
 
-export const OFFLINE_RATE_PER_MINUTE = [5, 8, 12, 18, 27, 40] as const;
-export const OFFLINE_UPGRADE_COSTS = [50, 150, 400, 1_000, 2_500] as const;
-export const MAX_OFFLINE_ELAPSED_MS = 8 * 60 * 60 * 1_000;
-export const MIN_OFFLINE_ELAPSED_MS = 60 * 1_000;
+export {
+  MAX_OFFLINE_ELAPSED_MS,
+  MIN_OFFLINE_ELAPSED_MS,
+  OFFLINE_RATE_PER_MINUTE,
+  OFFLINE_UPGRADE_COSTS,
+};
 export const GIFT_COOLDOWN_MS = 4 * 60 * 60 * 1_000;
 export const GIFT_REWARD = 100;
 
@@ -119,7 +127,7 @@ export function claimOfflineEarnings(now = Date.now()): OfflineClaimResult {
 
   const elapsedMs = Math.min(rawElapsedMs, MAX_OFFLINE_ELAPSED_MS);
   const rate = OFFLINE_RATE_PER_MINUTE[save.offlineRateLevel];
-  const calculatedAmount = Math.floor((elapsedMs / 60_000) * rate);
+  const calculatedAmount = Math.floor(elapsedMs / 60_000) * rate;
   const wallet = addToWallet(save, calculatedAmount);
   const amount = wallet.money - save.money;
 
@@ -133,8 +141,19 @@ export function claimOfflineEarnings(now = Date.now()): OfflineClaimResult {
   };
 }
 
-export function claimGiftReward(now = Date.now()): GiftClaimResult {
-  const safeNow = currentTime(now);
+export function claimGiftReward(rewardOrNow?: number, now = Date.now()): GiftClaimResult {
+  let rewardAmount = GIFT_REWARD;
+  let safeNow = currentTime(now);
+
+  if (typeof rewardOrNow === "number") {
+    if (rewardOrNow > 1_000_000_000) {
+      // Argument is a timestamp (now)
+      safeNow = currentTime(rewardOrNow);
+    } else if (rewardOrNow > 0) {
+      rewardAmount = rewardOrNow;
+    }
+  }
+
   const save = loadSave();
   const remainingMs = Math.max(0, save.nextGiftAt - safeNow);
 
@@ -142,7 +161,7 @@ export function claimGiftReward(now = Date.now()): GiftClaimResult {
     return { claimed: false, amount: 0, remainingMs, reason: "cooldown", save };
   }
 
-  const wallet = addToWallet(save, GIFT_REWARD);
+  const wallet = addToWallet(save, rewardAmount);
   const amount = wallet.money - save.money;
   if (amount <= 0) {
     return { claimed: false, amount: 0, remainingMs: 0, reason: "wallet-full", save };
@@ -221,4 +240,3 @@ export function recordFishingCatch(earned: number, caughtFishTypes: string[], no
 
   return persistedSave();
 }
-

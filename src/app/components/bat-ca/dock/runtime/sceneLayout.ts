@@ -85,7 +85,7 @@ export function sampleWaveSlope(x: number, spec: WaveMotionSpec, time: number): 
   return primarySlope + secondarySlope;
 }
 
-const BOAT_BOB_FACTOR = 0.125;
+const BOAT_BOB_FACTOR = 0.5;
 
 /**
  * Vertical offset + tilt the boat must apply so it visibly rides the front wave.
@@ -93,7 +93,8 @@ const BOAT_BOB_FACTOR = 0.125;
 export function sampleBoatWaveMotion(x: number, time: number): { bobY: number; tilt: number } {
   const spec = WATER_SURFACE_MOTION.front;
   const bobY = sampleWaveHeight(x, spec, time) * BOAT_BOB_FACTOR;
-  return { bobY, tilt: 0 };
+  const tilt = sampleWaveSlope(x, spec, time) * 0.15;
+  return { bobY, tilt };
 }
 
 /** Redraw both wave layers with the phase advanced to `time` (called per frame). */

@@ -12,7 +12,12 @@ import { createFishPool, updateFishPositions, destroyFishNodes } from './fishRen
 import { createCaptureController, tickCaptureState } from './captureController';
 import { FishingPowerGauge } from '../FishingPowerGauge';
 import { FISH_KINDS } from '../../game/fish-data';
-import { DEPTH_UPGRADE_DELTA, INITIAL_CAPACITY, INITIAL_MAX_DEPTH } from '../../game/constants';
+import {
+  CAPACITY_UPGRADE_DELTA,
+  DEPTH_UPGRADE_DELTA,
+  INITIAL_CAPACITY,
+  INITIAL_MAX_DEPTH,
+} from '../../game/constants';
 import { gameAudio } from '../../../../audio/audioManager';
 import { recordDiscoveredFish } from '../../game/storage';
 import { reportRuntimeError } from '../../../../observability/runtimeErrors';
@@ -156,7 +161,8 @@ export async function createDockRuntime(
         }
         if (state.fishingState === "idle") {
           state.targetDepthMeters = INITIAL_MAX_DEPTH + callbacks.depthLevelRef.current * DEPTH_UPGRADE_DELTA;
-          state.maxCapacityCount = INITIAL_CAPACITY + callbacks.capacityLevelRef.current * 2;
+          state.maxCapacityCount = INITIAL_CAPACITY
+            + callbacks.capacityLevelRef.current * CAPACITY_UPGRADE_DELTA;
           state.castPowerFactor = result.power;
           state.fishingState = "casting";
           state.castAnimTimer = 0;
@@ -175,6 +181,7 @@ export async function createDockRuntime(
 
           activeFishList = createFishPool({
             targetDepthMeters: state.targetDepthMeters,
+            progressionLevel: callbacks.depthLevelRef.current + 1,
             layout: initialLayout,
             fishKinds: FISH_KINDS,
             fishContainer
@@ -254,7 +261,7 @@ export async function createDockRuntime(
     const updateProgression = (capLvl: number, depLvl: number) => {
       if (signal.canceled || destroyed) return;
       state.targetDepthMeters = INITIAL_MAX_DEPTH + depLvl * DEPTH_UPGRADE_DELTA;
-      state.maxCapacityCount = INITIAL_CAPACITY + capLvl * 2;
+      state.maxCapacityCount = INITIAL_CAPACITY + capLvl * CAPACITY_UPGRADE_DELTA;
       // Water body, channel and ground banks are sized from the target depth —
       // re-run the layout applicator so a deeper upgrade never out-swims them.
       layoutApplicator(activeLayout);

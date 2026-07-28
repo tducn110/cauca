@@ -17,6 +17,60 @@ export const CAUGHT_SLOTS = [
   { x: 0, y: 52 },
 ];
 
+export function selectWeightedFishKind(
+  kinds: readonly FishKind[],
+  random = Math.random,
+): FishKind {
+  if (kinds.length === 0) {
+    throw new Error("Cannot select a fish from an empty pool");
+  }
+
+  const totalWeight = kinds.reduce(
+    (sum, kind) => sum + Math.max(0, kind.rarity),
+    0,
+  );
+  if (totalWeight <= 0) return kinds[0];
+
+  let roll = Math.min(1, Math.max(0, random())) * totalWeight;
+  for (const kind of kinds) {
+    roll -= Math.max(0, kind.rarity);
+    if (roll <= 0) return kind;
+  }
+  return kinds[kinds.length - 1];
+}
+
+export function eligibleFishKindsAtDepth(
+  kinds: readonly FishKind[],
+  depthMeters: number,
+  progressionLevel: number,
+): FishKind[] {
+  const safeLevel = Math.max(1, Math.floor(progressionLevel));
+  return kinds.filter((kind) => (
+    (kind.minLevel ?? 1) <= safeLevel
+    && depthMeters >= kind.depthMin
+    && depthMeters <= kind.depthMax
+  ));
+}
+
+function nearestFishKinds(
+  kinds: readonly FishKind[],
+  depthMeters: number,
+): FishKind[] {
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  const distances = kinds.map((kind) => {
+    const distance = depthMeters < kind.depthMin
+      ? kind.depthMin - depthMeters
+      : depthMeters > kind.depthMax
+        ? depthMeters - kind.depthMax
+        : 0;
+    nearestDistance = Math.min(nearestDistance, distance);
+    return { kind, distance };
+  });
+  return distances
+    .filter(({ distance }) => distance === nearestDistance)
+    .map(({ kind }) => kind);
+}
+
 export function drawFishShape(target: Graphics, kind: FishKind, size: number): void {
   target.clear();
   if (kind.isBad) {
@@ -62,6 +116,7 @@ export function drawFishShape(target: Graphics, kind: FishKind, size: number): v
 
 export function createFishPool(options: {
   targetDepthMeters: number;
+  progressionLevel: number;
   layout: DockViewportLayout;
   fishKinds: FishKind[];
   fishContainer: import('pixi.js').Container;
@@ -69,18 +124,25 @@ export function createFishPool(options: {
   const activeFishList: ActiveFish[] = [];
   const totalDepthPx = options.targetDepthMeters * 2.8;
   const numFish = Math.min(60, 20 + Math.floor(options.targetDepthMeters / 30));
+  const progressionLevel = Math.max(1, Math.floor(options.progressionLevel));
+  const unlockedKinds = options.fishKinds.filter(
+    (kind) => (kind.minLevel ?? 1) <= progressionLevel,
+  );
+  const fallbackKinds = unlockedKinds.length > 0 ? unlockedKinds : [options.fishKinds[0]];
 
   let nextFishId = 1;
   for (let i = 0; i < numFish; i++) {
     const depthRatio = Math.random();
     const depthMeters = depthRatio * options.targetDepthMeters;
 
-    const matching = options.fishKinds.filter(
-      (k) => depthMeters >= k.depthMin && depthMeters <= k.depthMax
+    const matching = eligibleFishKindsAtDepth(
+      fallbackKinds,
+      depthMeters,
+      progressionLevel,
     );
     const kind = matching.length > 0
-      ? matching[Math.floor(Math.random() * matching.length)]
-      : options.fishKinds[0];
+      ? selectWeightedFishKind(matching)
+      : selectWeightedFishKind(nearestFishKinds(fallbackKinds, depthMeters));
 
     const node = new Graphics();
     drawFishShape(node, kind, kind.size);

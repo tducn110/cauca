@@ -39,8 +39,8 @@ export function useDockProgression(options: UseDockProgressionOptions = {}) {
     return result;
   }, []);
 
-  const claimGift = useCallback((): GiftClaimResult => {
-    const result = claimGiftReward();
+  const claimGift = useCallback((customAmount?: number): GiftClaimResult => {
+    const result = claimGiftReward(customAmount);
     setSave(result.save);
     setNow(Date.now());
     return result;
@@ -68,7 +68,12 @@ export function useDockProgression(options: UseDockProgressionOptions = {}) {
     const clock = window.setInterval(() => setNow(Date.now()), CLOCK_TICK_MS);
     const handleStorage = () => refresh();
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") claimOffline();
+      if (document.visibilityState !== "visible") return;
+      if (autoClaimOffline) {
+        claimOffline();
+      } else {
+        refresh();
+      }
     };
 
     window.addEventListener("storage", handleStorage);
@@ -79,7 +84,7 @@ export function useDockProgression(options: UseDockProgressionOptions = {}) {
       window.removeEventListener("storage", handleStorage);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [claimOffline, refresh]);
+  }, [autoClaimOffline, claimOffline, refresh]);
 
   const recordCatch = useCallback((earned: number, caughtFishTypes: string[]): SaveData => {
     const updated = recordFishingCatch(earned, caughtFishTypes);
@@ -98,4 +103,3 @@ export function useDockProgression(options: UseDockProgressionOptions = {}) {
     recordCatch,
   };
 }
-

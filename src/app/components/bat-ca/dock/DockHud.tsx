@@ -181,9 +181,9 @@ export function DockHud({
           }`}
           type="button"
           onClick={onClaimGift}
-          disabled={!giftReady || interactionLocked}
-          aria-label={giftReady ? "Nhận quà miễn phí" : `Quà mở sau ${formatCooldown(giftRemainingMs)}`}
-          title={giftReady ? "Nhận quà" : "Quà đang hồi"}
+          disabled={interactionLocked}
+          aria-label={giftReady ? "Mở bảng quà tặng ngẫu nhiên" : `Bảng quà tặng - mở quà sau ${formatCooldown(giftRemainingMs)}`}
+          title="Quà tặng"
         >
           <Gift aria-hidden="true" strokeWidth={2.8} />
           <span>{giftReady ? "NHẬN QUÀ" : "QUÀ TẶNG"}</span>

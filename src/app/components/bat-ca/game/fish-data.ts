@@ -1,4 +1,5 @@
 import { MAX_DEPTH_LIMIT } from "./constants";
+import { GEAR_MAX_LEVEL, GEAR_UPGRADE_COSTS } from "./economyConfig";
 import type { FishKind, UpgradeType } from "./types";
 
 export const FISH_KINDS: FishKind[] = [
@@ -39,25 +40,25 @@ export const UPGRADE_META = {
   depth: {
     name: "Độ sâu",
     desc: "Lưới xuống sâu hơn để gặp cá to.",
-    maxLevel: 5,
-    costs: [120, 300, 800, 2000, 5500],
+    maxLevel: GEAR_MAX_LEVEL,
+    costs: GEAR_UPGRADE_COSTS.depth,
   },
   netSize: {
     name: "Cỡ lưới",
     desc: "Bán kính bắt cá lớn hơn.",
-    maxLevel: 5,
-    costs: [150, 350, 750, 1500, 2800],
+    maxLevel: GEAR_MAX_LEVEL,
+    costs: GEAR_UPGRADE_COSTS.netSize,
   },
   pullSpeed: {
     name: "Tốc độ kéo",
     desc: "Kéo lưới lên nhanh hơn.",
-    maxLevel: 5,
-    costs: [130, 320, 700, 1400, 2600],
+    maxLevel: GEAR_MAX_LEVEL,
+    costs: GEAR_UPGRADE_COSTS.pullSpeed,
   },
   capacity: {
     name: "Sức chứa",
     desc: "Bắt được nhiều cá hơn mỗi lượt.",
-    maxLevel: 5,
-    costs: [180, 420, 900, 1700, 3200],
+    maxLevel: GEAR_MAX_LEVEL,
+    costs: GEAR_UPGRADE_COSTS.capacity,
   },
 } as const;

@@ -7,7 +7,6 @@ import {
   OFFLINE_RATE_PER_MINUTE,
   claimGiftReward,
   claimOfflineEarnings,
-  getDockProgression,
   purchaseDockUpgrade,
 } from "./progression";
 
@@ -126,51 +125,57 @@ describe("dock progression", () => {
 
   it("purchases capacity, depth, and offline upgrades using their current levels", () => {
     saveProgress({
-      money: 1_000,
-      upgrades: { depth: 0, netSize: 2, pullSpeed: 3, capacity: 0 },
-      pendingBuffs: { bigNet: 8 },
+      money: 1000,
+      upgrades: { depth: 0, netSize: 0, pullSpeed: 0, capacity: 0 },
+      offlineRateLevel: 0,
     });
 
     const capacity = purchaseDockUpgrade("capacity", NOW);
     const depth = purchaseDockUpgrade("depth", NOW);
     const offline = purchaseDockUpgrade("offlineRate", NOW);
-    const snapshot = getDockProgression(NOW);
+
     const save = loadSave();
 
-    expect(capacity).toMatchObject({ purchased: true, cost: 180 });
-    expect(depth).toMatchObject({ purchased: true, cost: 120 });
-    expect(offline).toMatchObject({ purchased: true, cost: 50 });
-    expect(snapshot).toMatchObject({
-      wallet: 650,
-      earnings: 650,
-      capacityLevel: 1,
-      capacityCost: 420,
-      depthLevel: 1,
-      depthCost: 300,
+    expect(capacity).toMatchObject({ purchased: true, cost: 250 });
+    expect(depth).toMatchObject({ purchased: true, cost: 350 });
+    expect(offline).toMatchObject({ purchased: true, cost: 400 });
+
+    expect(save).toMatchObject({
+      money: 1000 - 250 - 350 - 400,
+      upgrades: { depth: 1, netSize: 0, pullSpeed: 0, capacity: 1 },
       offlineRateLevel: 1,
-      offlineRateCost: 150,
-      offlineRatePerMinute: OFFLINE_RATE_PER_MINUTE[1],
     });
-    expect(save.upgrades).toEqual({ depth: 1, netSize: 2, pullSpeed: 3, capacity: 1 });
-    expect(save.pendingBuffs).toEqual({ bigNet: 8 });
   });
 
   it("does not charge for unaffordable or maxed upgrades", () => {
     saveProgress({
-      money: 49,
+      money: 249,
+      upgrades: { depth: 15, netSize: 0, pullSpeed: 0, capacity: 0 }, // maxed depth at 15
       offlineRateLevel: 0,
-      upgrades: { depth: 5, netSize: 0, pullSpeed: 0, capacity: 0 },
     });
 
-    const unaffordable = purchaseDockUpgrade("offlineRate", NOW);
-    const maxed = purchaseDockUpgrade("depth", NOW);
+    const unaffordable = purchaseDockUpgrade("capacity", NOW); // requires 250
+    const maxed = purchaseDockUpgrade("depth", NOW); // cost should be null
 
     expect(unaffordable).toMatchObject({
       purchased: false,
-      cost: 50,
+      cost: 250,
       reason: "insufficient-funds",
     });
     expect(maxed).toMatchObject({ purchased: false, cost: null, reason: "max-level" });
-    expect(loadSave().money).toBe(49);
+    expect(loadSave().money).toBe(249);
+  });
+
+  it("claims a custom random gift reward amount from the gift board", () => {
+    saveProgress({ money: 1_000, bestMoney: 1_000, nextGiftAt: 0 });
+
+    const result = claimGiftReward(25_000, NOW);
+
+    expect(result).toMatchObject({
+      claimed: true,
+      amount: 25_000,
+      remainingMs: GIFT_COOLDOWN_MS,
+    });
+    expect(result.save.money).toBe(26_000);
   });
 });

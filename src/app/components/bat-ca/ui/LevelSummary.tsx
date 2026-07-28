@@ -95,7 +95,7 @@ export function LevelSummary({
           {hasAffordableUpgrade && (
             <button
               onClick={onUpgrade}
-              className="flex items-center justify-center gap-2 bg-white border-2 border-pencil text-ink-dark font-bold py-2.5 rounded-full hover:bg-gray-50 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 bg-white text-ink-dark font-bold py-2.5 rounded-full hover:bg-gray-50 transition-colors text-sm"
             >
               <ShoppingCart size={14} />
               Nâng cấp
@@ -104,7 +104,7 @@ export function LevelSummary({
 
           <button
             onClick={onShop}
-            className="flex items-center justify-center gap-2 bg-white border-2 border-orange-cta text-orange-cta font-bold py-2.5 rounded-full hover:bg-orange-50 transition-colors text-sm"
+            className="flex items-center justify-center gap-2 bg-white text-orange-cta font-bold py-2.5 rounded-full hover:bg-orange-50 transition-colors text-sm"
           >
             <Bomb size={14} />
             Mua vật phẩm

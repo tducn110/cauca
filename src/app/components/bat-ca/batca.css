@@ -200,7 +200,8 @@
 .batca-btn-primary:hover { box-shadow: 0 14px 32px rgba(232, 116, 50, 0.55); }
 .batca-btn-ghost {
   background: rgba(255, 255, 255, 0.85);
-  border: 2px solid var(--pencil-gray);
+  border: 1.5px solid rgba(138, 125, 101, 0.2);
+  box-shadow: 0 4px 12px rgba(42, 36, 24, 0.08);
   color: var(--ink-dark);
 }
 .batca-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
@@ -240,7 +241,7 @@
   width: 64px; height: 64px;
   border-radius: 999px;
   background: radial-gradient(circle at 35% 30%, #f8c860, #d99820);
-  border: 2px solid var(--ink-dark);
+  border: 2px solid #d99820;
   display: flex; align-items: center; justify-content: center;
   font-size: 34px; font-weight: 800; color: #fff;
   margin: 0 auto 14px;
@@ -525,8 +526,9 @@
 .batca-shop-list { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; }
 .batca-shop-qty-btn {
   width: 28px; height: 28px; border-radius: 999px;
-  border: 2px solid var(--pencil-gray);
+  border: 1.5px solid rgba(138, 125, 101, 0.25);
   background: #fff;
+  box-shadow: 0 2px 8px rgba(42, 36, 24, 0.08);
   color: var(--ink-dark);
   font-weight: 800; font-size: 16px;
   display: flex; align-items: center; justify-content: center;

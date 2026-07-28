@@ -79,7 +79,7 @@ export function updateCharacterAnimation(
 ): void {
   if (waveMotion) {
     nodes.boatBob.y = HULL_SINK_PX + waveMotion.bobY;
-    nodes.boatBob.rotation = 0;
+    nodes.boatBob.rotation = waveMotion.tilt;
   }
   // Shadow alpha: use the current GSAP-driven y offset for a subtle pulse.
   if (nodes.boatShadow) {

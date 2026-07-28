@@ -50,7 +50,7 @@ export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
           {mode === "playing" && (
             <button
               onClick={endGame}
-              className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[7] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full bg-[rgba(255,255,255,0.9)] border border-pencil text-ink-dark font-extrabold text-[13px] cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+              className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-[7] w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full bg-[rgba(255,255,255,0.9)] border border-[rgba(138,125,101,0.2)] text-ink-dark font-extrabold text-[13px] cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_2px_8px_rgba(42,36,24,0.06)]"
               aria-label="Kết thúc chuyến câu"
             >
               <ArrowLeft size={18} className="sm:hidden" />

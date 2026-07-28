@@ -1,10 +1,20 @@
 import {
+  CAPACITY_UPGRADE_DELTA,
   DEPTH_UPGRADE_DELTA,
   INITIAL_CAPACITY,
   INITIAL_MAX_DEPTH,
   INITIAL_NET_SIZE,
   INITIAL_PULL_SPEED,
+  NET_SIZE_UPGRADE_DELTA,
+  PULL_SPEED_UPGRADE_DELTA,
 } from "./constants";
+import {
+  GEAR_MAX_LEVEL,
+  MAX_OFFLINE_ELAPSED_MS,
+  MIN_OFFLINE_ELAPSED_MS,
+  OFFLINE_MAX_LEVEL,
+  OFFLINE_RATE_PER_MINUTE,
+} from "./economyConfig";
 import type { BuffState, BuffType, UpgradeType, Upgrades } from "./types";
 import { HOOK_DEFINITIONS, RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
 import { FISH_KINDS } from "./fish-data";
@@ -14,8 +24,8 @@ const SAVE_VERSION = 5 as const;
 
 const MAX_SAFE_SCORE = 999_999_999;
 const MAX_SAFE_BUFF_VALUE = 9_999;
-const MAX_UPGRADE_LEVEL = 5;
-const MAX_OFFLINE_RATE_LEVEL = 5;
+const MAX_UPGRADE_LEVEL = GEAR_MAX_LEVEL;
+const MAX_OFFLINE_RATE_LEVEL = OFFLINE_MAX_LEVEL;
 const UPGRADE_TYPES: UpgradeType[] = ["depth", "netSize", "pullSpeed", "capacity"];
 const BUFF_TYPES: BuffType[] = ["dynamite", "strength", "time", "bigNet"];
 const SAVE_LISTENERS = new Set<(save: SaveData) => void>();
@@ -122,16 +132,18 @@ function sanitizeDiscoveredFish(value: unknown): string[] {
   return Array.from(set);
 }
 
-function inferLevel(value: unknown, bases: number[], delta: number): number {
+function inferLevel(value: unknown, bases: number[], deltas: number[]): number {
   const stat = finiteNumber(value, bases[0]);
   let bestLevel = 0;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const base of bases) {
-    for (let level = 0; level <= MAX_UPGRADE_LEVEL; level++) {
-      const distance = Math.abs(stat - (base + level * delta));
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestLevel = level;
+    for (const delta of deltas) {
+      for (let level = 0; level <= MAX_UPGRADE_LEVEL; level++) {
+        const distance = Math.abs(stat - (base + level * delta));
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestLevel = level;
+        }
       }
     }
   }
@@ -143,10 +155,10 @@ function migrateUpgrades(parsed: Record<string, unknown>): Upgrades {
     return sanitizeUpgrades(parsed.upgrades);
   }
   return {
-    depth: inferLevel(parsed.maxDepth, [INITIAL_MAX_DEPTH, 180], DEPTH_UPGRADE_DELTA),
-    netSize: inferLevel(parsed.netSize, [INITIAL_NET_SIZE], 8),
-    pullSpeed: inferLevel(parsed.pullSpeed, [INITIAL_PULL_SPEED], 50),
-    capacity: inferLevel(parsed.capacity, [INITIAL_CAPACITY], 2),
+    depth: inferLevel(parsed.maxDepth, [INITIAL_MAX_DEPTH, 180], [DEPTH_UPGRADE_DELTA, 400]),
+    netSize: inferLevel(parsed.netSize, [INITIAL_NET_SIZE], [NET_SIZE_UPGRADE_DELTA, 8]),
+    pullSpeed: inferLevel(parsed.pullSpeed, [INITIAL_PULL_SPEED], [PULL_SPEED_UPGRADE_DELTA, 50]),
+    capacity: inferLevel(parsed.capacity, [INITIAL_CAPACITY], [CAPACITY_UPGRADE_DELTA, 2]),
   };
 }
 
@@ -287,45 +299,22 @@ export function recordDiscoveredFish(fishTypes: string[]): string[] {
   return newlyDiscovered;
 }
 
-// --- Offline Income Calculation & Single Credit ---
+// --- Offline Income Preview ---
 export function calculateOfflineEarnings(now = Date.now()): { eligibleMinutes: number; amount: number; lastActive: number } {
   const save = loadSave();
   const lastActive = save.lastActiveAt;
   const elapsedMs = now - lastActive;
 
-  if (elapsedMs < 60_000) {
+  if (elapsedMs < MIN_OFFLINE_ELAPSED_MS) {
     return { eligibleMinutes: 0, amount: 0, lastActive };
   }
 
-  const maxOfflineMinutes = 8 * 60; // 8 hours max cap
   const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+  const maxOfflineMinutes = Math.floor(MAX_OFFLINE_ELAPSED_MS / 60_000);
   const eligibleMinutes = Math.min(maxOfflineMinutes, elapsedMinutes);
 
-  // Rate per minute = 5 coins * (offlineRateLevel + 1)
-  const ratePerMinute = (save.offlineRateLevel + 1) * 5;
+  const ratePerMinute = OFFLINE_RATE_PER_MINUTE[save.offlineRateLevel] || OFFLINE_RATE_PER_MINUTE[0];
   const amount = eligibleMinutes * ratePerMinute;
 
   return { eligibleMinutes, amount, lastActive };
-}
-
-export function claimOfflineEarnings(now = Date.now()): { claimed: boolean; amount: number } {
-  const save = loadSave();
-  // Prevent duplicate credit if already claimed recently
-  if (save.lastOfflineClaimedAt && now - save.lastOfflineClaimedAt < 60_000) {
-    return { claimed: false, amount: 0 };
-  }
-
-  const { amount } = calculateOfflineEarnings(now);
-  if (amount <= 0) {
-    saveProgress({ lastActiveAt: now, lastOfflineClaimedAt: now });
-    return { claimed: false, amount: 0 };
-  }
-
-  saveProgress({
-    money: save.money + amount,
-    lastActiveAt: now,
-    lastOfflineClaimedAt: now,
-  });
-
-  return { claimed: true, amount };
 }

@@ -189,15 +189,9 @@ export function createDockLayout(
       ? clamp(worldWidth * DOCK_LAYOUT_RATIOS.wideCharacterWidthRatio, 150, 220)
       : clamp(width * 0.19, 180, 240);
   const characterHeight = characterWidth * (CHARACTER_SOURCE.height / CHARACTER_SOURCE.width);
-  
-  const rightBankX = worldLeft + worldWidth;
-  const desiredBankGap = 26;
-  const existingCharacterWidth = characterWidth;
-  const estimatedBoatHalfWidth = existingCharacterWidth * 0.48;
 
-  const boatAnchorX = wide
-    ? rightBankX - desiredBankGap - estimatedBoatHalfWidth
-    : worldLeft + worldWidth * 0.68;
+
+  const boatAnchorX = worldLeft + worldWidth * DOCK_LAYOUT_RATIOS.boatAnchorXRatio;
   // Boat sits ON the waterline — anchor is at hull bottom (94.27% of sprite height),
   // so placing it exactly at waterlineY makes the hull touch the water surface.
   const boatAnchorY = waterlineY + 2;

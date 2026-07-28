@@ -35,7 +35,11 @@ vi.mock('pixi.js', () => {
     x = 0; y = 0; rotation = 0; alpha = 1;
   }
   class MockText {
+    style: any = {};
     anchor = { set: vi.fn() };
+    position = { set: vi.fn() };
+    scale = { set: vi.fn() };
+    alpha = 1;
     destroy() {}
   }
   class MockAnimatedSprite {

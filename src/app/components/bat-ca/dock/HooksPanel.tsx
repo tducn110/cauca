@@ -45,16 +45,16 @@ export function HooksPanel({ onClose, onNotice }: Props) {
   return (
     <div className="fishing-dock-screen__backdrop" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-[32px] bg-white border-4 border-black border-b-[8px] overflow-hidden flex flex-col max-h-[calc(100dvh-40px)]"
+        className="w-full max-w-lg rounded-[32px] bg-white border-2 border-slate-300 border-b-[4px] overflow-hidden flex flex-col max-h-[calc(100dvh-40px)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="hooks-panel-title"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-white p-5 text-center relative border-b-4 border-black flex-shrink-0">
+        <div className="bg-white p-5 text-center relative border-b-2 border-slate-300 flex-shrink-0">
           {/* Coin Badge */}
-          <div className="absolute top-1/2 -translate-y-1/2 left-4 px-3 py-1.5 rounded-full bg-yellow-100 border-2 border-black border-b-[4px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
+          <div className="absolute top-1/2 -translate-y-1/2 left-4 px-3 py-1.5 rounded-full bg-yellow-100 border border-yellow-400 border-b-[2px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
             <span className="text-amber-500"><Coins size={16} strokeWidth={3} /></span>
             <span>{save.money.toLocaleString("vi-VN")}</span>
           </div>
@@ -65,7 +65,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
 
           <button
             type="button"
-            className="absolute top-1/2 -translate-y-1/2 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border-2 border-black border-b-[4px] active:border-b-2 active:translate-y-[2px]"
+            className="absolute top-1/2 -translate-y-1/2 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-2 active:border-b active:translate-y-[2px]"
             onClick={onClose}
             aria-label="Đóng"
           >
@@ -85,12 +85,12 @@ export function HooksPanel({ onClose, onNotice }: Props) {
                 type="button"
                 onClick={() => isUnlocked && handleSelect(hook.id)}
                 disabled={!isUnlocked}
-                className={`relative aspect-square rounded-[20px] flex items-center justify-center p-3 transition-all border-2 border-black ${
+                className={`relative aspect-square rounded-[20px] flex items-center justify-center p-3 transition-all border border-slate-300 ${
                   isSelected
-                    ? "bg-yellow-100 border-b-[6px] -translate-y-1"
+                    ? "bg-yellow-100 border-b-[3px] -translate-y-1"
                     : isUnlocked
-                    ? "bg-white border-b-[4px] hover:bg-gray-100 active:border-b-2 active:translate-y-[2px] cursor-pointer"
-                    : "bg-gray-200 border-b-[4px] opacity-60 cursor-not-allowed"
+                    ? "bg-white border-b-[2px] hover:bg-gray-100 active:border-b active:translate-y-[2px] cursor-pointer"
+                    : "bg-gray-200 border-b-[2px] opacity-60 cursor-not-allowed"
                 }`}
                 title={isUnlocked ? hook.name : "Chưa mở khóa"}
               >
@@ -104,7 +104,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
 
                 {/* Orange Selected Badge Marker */}
                 {isSelected && (
-                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-orange-500 border-2 border-black text-white flex items-center justify-center shadow-sm">
+                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-full bg-orange-500 border border-orange-600 text-white flex items-center justify-center shadow-sm">
                     <Sparkles size={14} strokeWidth={3} />
                   </div>
                 )}
@@ -114,12 +114,12 @@ export function HooksPanel({ onClose, onNotice }: Props) {
         </div>
 
         {/* Bottom Panel */}
-        <div className="p-5 border-t-4 border-black bg-white flex justify-center flex-shrink-0">
+        <div className="p-5 border-t-2 border-slate-300 bg-white flex justify-center flex-shrink-0">
           <button
             type="button"
             disabled={allUnlocked || save.money < RANDOM_HOOK_UNLOCK_PRICE}
             onClick={handleUnlockRandom}
-            className="px-6 py-3 rounded-full bg-orange-400 text-black font-black text-sm uppercase tracking-wide flex items-center gap-2 border-2 border-black border-b-[4px] hover:bg-orange-500 active:border-b-2 active:translate-y-[2px] disabled:opacity-50 disabled:active:border-b-[4px] disabled:active:translate-y-0 disabled:cursor-not-allowed transition-all"
+            className="px-6 py-3 rounded-full bg-orange-400 text-black font-black text-sm uppercase tracking-wide flex items-center gap-2 border border-orange-600 border-b-[3px] hover:bg-orange-500 active:border-b active:translate-y-[2px] disabled:opacity-50 disabled:active:border-b-[3px] disabled:active:translate-y-0 disabled:cursor-not-allowed transition-all"
           >
             <Coins size={20} strokeWidth={2.5} />
             <span>Mở khóa ngẫu nhiên ({RANDOM_HOOK_UNLOCK_PRICE}đ)</span>
