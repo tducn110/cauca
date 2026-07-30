@@ -8,6 +8,7 @@ import {
   claimGiftReward,
   claimOfflineEarnings,
   purchaseDockUpgrade,
+  recordDockActivity,
 } from "./progression";
 
 const STORE_KEY = "batca-ao-lang-save";
@@ -86,6 +87,27 @@ describe("dock progression", () => {
     expect(first.save.lastActiveAt).toBe(NOW);
     expect(second).toMatchObject({ claimed: false, amount: 0, elapsedMs: 0, capped: false });
     expect(second.save.money).toBe(100 + expected);
+  });
+
+  it("keeps the displayed offline reward after an activity heartbeat", () => {
+    saveProgress({
+      money: 100,
+      bestMoney: 100,
+      offlineRateLevel: 1,
+      lastActiveAt: NOW - 30 * 60 * 1_000,
+    });
+
+    const displayedReward = claimOfflineEarnings(NOW);
+    recordDockActivity(NOW + 30_000);
+
+    const saveAfterHeartbeat = loadSave();
+    const duplicateClaim = claimOfflineEarnings(NOW + 30_000);
+
+    expect(displayedReward).toMatchObject({ claimed: true, amount: 360 });
+    expect(saveAfterHeartbeat.money).toBe(460);
+    expect(saveAfterHeartbeat.lastActiveAt).toBe(NOW + 30_000);
+    expect(duplicateClaim).toMatchObject({ claimed: false, amount: 0 });
+    expect(duplicateClaim.save.money).toBe(460);
   });
 
   it("claims one gift and enforces the persisted cooldown", () => {

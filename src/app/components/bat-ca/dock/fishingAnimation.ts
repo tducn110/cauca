@@ -9,7 +9,24 @@ export const FISHING_DOCK_ASSETS = {
   dial: "/gauge/dial_base.png",
   pointer: "/gauge/pointer.png",
   glow: "/gauge/max_glow.png",
+  hook: "/hook.png",
+  coin: "/coin.png",
 } as const;
+
+export const HOOK_ASSET_METADATA = {
+  // Original bounding box: (256, 120, 844, 966) -> cropped and resized to 179x256
+  textureWidth: 179,
+  textureHeight: 256,
+  alphaBBox: { x: 0, y: 0, w: 179, h: 256 },
+  eyeletPixel: { x: 112, y: 2 },
+  capturePixel: { x: 66, y: 221 }, // the bend of the hook
+  visibleContentHeight: 256, // Wait, visible logical height target is ~60
+  scale: 0.27, // so 219px (from 2 to 221) * 0.27 ~ 59px. 256 * 0.27 ~ 69px
+  anchorX: 66 / 179,
+  anchorY: 221 / 256,
+  eyeletOffsetX: 112 - 66,
+  eyeletOffsetY: 2 - 221,
+};
 
 // Pivot at the bottom of the boat hull (pixel 510 from top in a 541-tall frame).
 // anchorX = 240/480 = 0.5 (horizontal centre of sprite)

@@ -84,7 +84,7 @@ export function tickCaptureState(
     // DESCENDING: plunge straight down. NO collision, NO catch.
     const plungeSpeed = (450 + state.targetDepthMeters * 0.8) * (0.85 + state.castPowerFactor * 0.3);
     state.capturePointY += plungeSpeed * dt;
-    state.capturePointX += (layout.gameplayAxisX - state.capturePointX) * 5 * dt;
+    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 5 * dt;
 
     // Camera follows only after hook is clearly below the surface
     if (state.capturePointY > layout.waterlineY + 50) {
@@ -108,7 +108,7 @@ export function tickCaptureState(
     const atCapacity = caughtFishList.length >= state.maxCapacityCount;
     const reelSpeed = 220 + (atCapacity ? 100 : 0);
     state.capturePointY -= reelSpeed * dt;
-    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 12 * dt;
+    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 5 * dt;
 
     const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
     state.cameraY += (targetCamY - state.cameraY) * 8 * dt;
@@ -117,19 +117,24 @@ export function tickCaptureState(
     const canCatch = caughtFishList.length < state.maxCapacityCount;
     if (canCatch) {
       const captureRadius = 18;
+      const hookCurveX = state.capturePointX;
+      const hookCurveY = state.capturePointY;
+      const prevHookCurveX = state.previousCapturePointX;
+      const prevHookCurveY = state.previousCapturePointY;
+
       for (const fish of activeFishList) {
         if (fish.isCaught) continue;
         const fishRadius = fish.size * 0.8;
         const dist = distanceToSegment(
           fish.x, fish.depthY,
-          state.previousCapturePointX, state.previousCapturePointY,
-          state.capturePointX, state.capturePointY,
+          prevHookCurveX, prevHookCurveY,
+          hookCurveX, hookCurveY,
         );
         if (dist <= captureRadius + fishRadius) {
           fish.isCaught = true;
           callbacks.onFishCaught(fish);
           if (caughtFishList.length >= state.maxCapacityCount) {
-            callbacks.onCapacityFull(state.capturePointX, state.capturePointY - 30);
+            callbacks.onCapacityFull(state.capturePointX, state.capturePointY);
             break;
           }
         }

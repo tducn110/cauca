@@ -28,28 +28,28 @@ export type LayoutNodes = {
  * so they visually cross each other for a natural ocean feel. */
 export const WATER_SURFACE_MOTION = {
   rear: {
-    amplitude: 4,
+    amplitude: 8,
     wavelength: 250,
     speed: 0.45,
-    amplitude2: 2,
+    amplitude2: 4,
     wavelength2: 140,
     speed2: -0.3,
-    color: 0x4dd0e1, // cyan
-    alpha: 0.15, // alpha thấp
+    color: 0x4dd0e1,
+    alpha: 0.25,
     strokeColor: 0x88f5f5,
-    strokeAlpha: 0.5,
+    strokeAlpha: 0.6,
   },
   front: {
-    amplitude: 7,
+    amplitude: 14,
     wavelength: 310,
     speed: -0.65,
-    amplitude2: 3,
+    amplitude2: 6,
     wavelength2: 175,
     speed2: 0.35,
     color: 0x0c4b94,
-    alpha: 0.3, // alpha thấp
+    alpha: 0.45,
     strokeColor: 0x90e0ef,
-    strokeAlpha: 0.8,
+    strokeAlpha: 0.9,
   },
 } as const;
 
@@ -132,7 +132,7 @@ export function drawWave(
     speed2?: number;
   },
 ): void {
-  const overdraw = 50;
+  const overdraw = 200;
   const startX = -overdraw;
   const endX = layout.width + overdraw;
   // Finer step for smoother curves
@@ -326,8 +326,9 @@ export function createLayoutApplicator(
     const targetDepthMeters = nodes.targetDepthMeters();
     const totalDepthPx = targetDepthMeters * 2.8 + nextLayout.height;
     nodes.waterBody.clear();
-    // Overdraw horizontally to guarantee full coverage even during resize
-    const waterOverdraw = 80;
+    // Full-width water body covers entire viewport width (banks included).
+    // Starts just above waterlineY so the water surface appears continuous.
+    const waterOverdraw = 400; // extended to fully cover banks on both sides
     nodes.waterBody
       .rect(
         -waterOverdraw,

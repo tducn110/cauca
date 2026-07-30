@@ -7,6 +7,7 @@ import {
   duckFrameAtProgress,
   validateDuckFrameTextures,
   ROD_TIP_BY_FRAME,
+  HOOK_ASSET_METADATA,
 } from '../fishingAnimation';
 
 export {
@@ -17,6 +18,7 @@ export {
   duckFrameAtProgress,
   validateDuckFrameTextures,
   ROD_TIP_BY_FRAME,
+  HOOK_ASSET_METADATA,
 };
 
 export const ASSET_PATHS = FISHING_DOCK_ASSETS;

@@ -25,7 +25,7 @@ export const DOCK_LAYOUT_RATIOS = {
   /** Playable water column width as a fraction of viewport height in wide mode. */
   wideWorldHeightRatio: 0.66,
   /** Boat anchor X inside the water column (matches the classic 0.62 boat side). */
-  boatAnchorXRatio: 0.62,
+  boatAnchorXRatio: 0.88,
   /** Fishing channel width as a fraction of the water column in wide mode. */
   wideChannelWidthRatio: 0.62,
   /** Duck-boat sprite width as a fraction of the water column in wide mode. */

@@ -23,12 +23,11 @@ describe("fishing dock shared layout", () => {
     }
     expect(layout.waterlineY / height).toBeGreaterThanOrEqual(0.43);
     expect(layout.waterlineY / height).toBeLessThanOrEqual(0.48);
-    // Desktop viewports are "wide": the boat anchors inside the centred water
-    // column at the classic 0.62 ratio of the column (not of the full width).
+    // Desktop viewports are "wide": the boat now anchors near the right bank at 0.88 of the column.
     expect(layout.wide).toBe(true);
     const boatRatioInWorld = (layout.boatAnchor.x - layout.worldLeft) / layout.worldWidth;
     expect(boatRatioInWorld).toBeGreaterThanOrEqual(0.6);
-    expect(boatRatioInWorld).toBeLessThanOrEqual(0.66);
+    expect(boatRatioInWorld).toBeLessThanOrEqual(0.93);
   });
 
   it.each([
@@ -98,6 +97,6 @@ describe("fishing dock shared layout", () => {
     expect(layout.worldLeft).toBe(0);
     expect(layout.worldWidth).toBe(width);
     expect(layout.boatAnchor.x / width).toBeGreaterThanOrEqual(0.6);
-    expect(layout.boatAnchor.x / width).toBeLessThanOrEqual(0.66);
+    expect(layout.boatAnchor.x / width).toBeLessThanOrEqual(0.93);
   });
 });

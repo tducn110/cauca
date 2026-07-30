@@ -5,18 +5,14 @@ import "./fishing-dock-screen.css";
 interface Props {
   amount: number;
   eligibleMinutes: number;
-  onClaim: () => { claimed: boolean; amount: number };
   onClose: () => void;
-  onClaimed: (amount: number) => void;
+  onConfirm: (amount: number) => void;
 }
 
-export function OfflineEarningsModal({ amount, eligibleMinutes, onClaim, onClose, onClaimed }: Props) {
-  const handleClaim = () => {
-    const res = onClaim();
-    if (res.claimed) {
-      gameAudio.play("sell");
-      onClaimed(res.amount);
-    }
+export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onConfirm }: Props) {
+  const handleConfirm = () => {
+    gameAudio.play("sell");
+    onConfirm(amount);
     onClose();
   };
 
@@ -25,7 +21,7 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClaim, onClose
   const timeStr = hours > 0 ? `${hours} giờ ${mins} phút` : `${mins} phút`;
 
   return (
-    <div className="fishing-dock-screen__backdrop" onClick={handleClaim}>
+    <div className="fishing-dock-screen__backdrop" onClick={handleConfirm}>
       <section
         className="w-[min(380px,100%)] rounded-[32px] bg-white border-2 border-slate-300 border-b-[4px] overflow-hidden flex flex-col text-center"
         role="dialog"
@@ -62,7 +58,7 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClaim, onClose
 
           <button
             type="button"
-            onClick={handleClaim}
+            onClick={handleConfirm}
             className="w-full mt-2 bg-orange-500 text-white border-2 border-orange-600 border-b-[3px] font-black text-xl py-3.5 rounded-[20px] uppercase tracking-wider transition-all active:border-b-[2px] active:translate-y-[2px]"
           >
             Nhận Quà
