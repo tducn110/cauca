@@ -187,6 +187,7 @@ export function updateFishPositions(
         const index = caughtFishList.indexOf(fish);
         const slot = CAUGHT_SLOTS[Math.min(index, CAUGHT_SLOTS.length - 1)];
         const extraY = Math.floor(index / CAUGHT_SLOTS.length) * 45;
+        // The fish attach directly to the capturePoint, which corresponds to the physical hook curve
         fish.x = capturePointX + slot.x;
         fish.depthY = capturePointY + slot.y + extraY;
         fish.node.position.set(fish.x, fish.depthY);

@@ -24,7 +24,6 @@ import { SettingsModal } from "./SettingsModal";
 import { AquariumPanel } from "./AquariumPanel";
 import { GiftModal } from "./GiftModal";
 import { OfflineEarningsModal } from "./OfflineEarningsModal";
-import { calculateOfflineEarnings } from "../game/storage";
 import { reportRuntimeError } from "../../../observability/runtimeErrors";
 import "./fishing-dock-screen.css";
 
@@ -55,6 +54,7 @@ function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
 
 export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const progression = useDockProgression({ autoClaimOffline: false });
+  const { claimOffline } = progression;
   const screenRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => createDockLayout());
   const [panel, setPanel] = useState<DockPanel>(null);
@@ -85,22 +85,23 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const launchTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
 
-  // Check offline earnings on mount
+  // Persist the reward before showing it so activity heartbeats cannot invalidate it.
   useEffect(() => {
     try {
-      const offline = calculateOfflineEarnings();
-      if (offline.amount > 0 && offline.eligibleMinutes >= 1) {
-        setOfflineEarningsData({ amount: offline.amount, eligibleMinutes: offline.eligibleMinutes });
+      const offline = claimOffline();
+      const eligibleMinutes = Math.floor(offline.elapsedMs / 60_000);
+      if (offline.claimed && offline.amount > 0 && eligibleMinutes >= 1) {
+        setOfflineEarningsData({ amount: offline.amount, eligibleMinutes });
         setShowOfflineModal(true);
       }
     } catch (error) {
       reportRuntimeError(error, {
         area: "FishingDockScreen",
-        operation: "calculateOfflineEarnings",
+        operation: "claimOfflineEarnings",
         fatal: false,
       });
     }
-  }, []);
+  }, [claimOffline]);
 
   useLayoutEffect(() => {
     const screen = screenRef.current;
@@ -398,9 +399,8 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
         <OfflineEarningsModal
           amount={offlineEarningsData.amount}
           eligibleMinutes={offlineEarningsData.eligibleMinutes}
-          onClaim={() => progression.claimOffline()}
           onClose={() => setShowOfflineModal(false)}
-          onClaimed={(claimedAmount) => showNotice(`Đã nhận +${claimedAmount.toLocaleString("vi-VN")}đ`)}
+          onConfirm={(claimedAmount) => showNotice(`Đã nhận +${claimedAmount.toLocaleString("vi-VN")}đ`)}
         />
       )}
     </main>

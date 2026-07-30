@@ -121,7 +121,9 @@
   color: var(--dock-white);
   font-size: clamp(32px, 3.35vw, 48px);
   font-weight: 1000;
-  line-height: 1;
+  line-height: 1.1;
+  padding-bottom: 4px;
+  margin-bottom: -4px;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow:

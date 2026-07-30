@@ -198,11 +198,9 @@
 .fishing-dock-canvas__gauge-button::before {
   position: absolute;
   inset: -6px;
-  border: 2px solid rgba(255, 240, 82, 0.58);
   border-radius: inherit;
-  box-shadow: 0 0 0 5px rgba(255, 213, 41, 0.08), 0 7px 18px rgba(33, 39, 86, 0.24);
   content: "";
-  opacity: 0.72;
+  display: none;
   transform: scale(0.98);
   transition: border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease, transform 120ms ease;
   animation: fishing-dock-gauge-pulse 2.6s ease-in-out infinite;

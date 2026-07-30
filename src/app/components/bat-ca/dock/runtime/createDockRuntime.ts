@@ -3,7 +3,7 @@ import type { DockViewportLayout } from '../dockLayout';
 import type { PowerLockResult } from '../FishingPowerGauge';
 import type { CatchSummary, FishingState } from '../FishingDockCanvas';
 import type { DockSceneRuntime, ActiveFish, FloatingText } from './runtimeTypes';
-import { loadTexture, FISHING_DOCK_ASSETS, DUCK_ANIMATION_SOURCE, validateDuckFrameTextures, ROD_TIP_BY_FRAME } from './fishingAssets';
+import { loadTexture, FISHING_DOCK_ASSETS, DUCK_ANIMATION_SOURCE, validateDuckFrameTextures, ROD_TIP_BY_FRAME, HOOK_ASSET_METADATA } from './fishingAssets';
 import { createLayoutApplicator, updateWaterSurface, sampleBoatWaveMotion } from './sceneLayout';
 import { buildAmbient, updateAmbient } from './ambientRenderer';
 import { buildCharacterNodes, updateCharacterAnimation } from './characterRenderer';
@@ -78,11 +78,13 @@ export async function createDockRuntime(
     app.canvas.setAttribute("aria-hidden", "true");
     host.prepend(app.canvas);
 
-    const [backgroundTexture, dialTexture, pointerTexture, glowTexture, ...frameTextures] = await Promise.all([
+    const [backgroundTexture, dialTexture, pointerTexture, glowTexture, hookTexture, coinTexture, ...frameTextures] = await Promise.all([
       loadTexture(FISHING_DOCK_ASSETS.background),
       loadTexture(FISHING_DOCK_ASSETS.dial),
       loadTexture(FISHING_DOCK_ASSETS.pointer),
       loadTexture(FISHING_DOCK_ASSETS.glow),
+      loadTexture(FISHING_DOCK_ASSETS.hook),
+      loadTexture(FISHING_DOCK_ASSETS.coin),
       ...FISHING_DOCK_ASSETS.frames.map((src) => loadTexture(src)),
     ]);
 
@@ -116,8 +118,12 @@ export async function createDockRuntime(
     const frontWaveMask = new Graphics();
     frontWave.mask = frontWaveMask;
     const fishingLine = new Graphics();
-    const hookGraphic = new Graphics();
-    hookGraphic.moveTo(0, 0).lineTo(0, 10).bezierCurveTo(0, 16, -6, 16, -6, 10).lineTo(-4, 12).stroke({ color: 0xcccccc, width: 2.5 });
+    // Hook sprite: source 1024×1024 RGBA, eyelet at (625,123).
+    // anchor=(0.610, 0.120) places the eyelet ring at hookWorldX/hookWorldY.
+    // scale=0.13 → rendered ~133px tall, clearly visible in scene.
+    const hookSprite = new Sprite(hookTexture);
+    hookSprite.anchor.set(HOOK_ASSET_METADATA.anchorX, HOOK_ASSET_METADATA.anchorY);
+    hookSprite.scale.set(HOOK_ASSET_METADATA.scale);
     
     const fishContainer = new Container();
     const textContainer = new Container();
@@ -177,7 +183,7 @@ export async function createDockRuntime(
           milestoneTimer = 0;
           payoutTimer = 0;
           depthMilestoneLabel.alpha = 0;
-          hookGraphic.alpha = 1;
+          hookSprite.alpha = 1;
 
           activeFishList = createFishPool({
             targetDepthMeters: state.targetDepthMeters,
@@ -222,7 +228,7 @@ export async function createDockRuntime(
       boatRoot,
       frontWave,
       frontWaveMask,
-      hookGraphic,
+      hookSprite,
       textContainer,
     );
 
@@ -282,12 +288,13 @@ export async function createDockRuntime(
     };
 
     const handlePointerMoveListener = (e: PointerEvent) => {
-      if (state.fishingState !== "ascending") return;
-      const rect = app.canvas.getBoundingClientRect();
-      if (rect.width <= 0 || !Number.isFinite(rect.width)) return;
-      const scaleX = activeLayout.width / rect.width;
-      const pointerX = (e.clientX - rect.left) * scaleX;
-      const halfChannel = activeLayout.channelWidth * 0.48;
+      if (signal.canceled || destroyed) return;
+      if (state.fishingState !== "descending" && state.fishingState !== "ascending") return;
+      
+      const bounds = app.canvas.getBoundingClientRect();
+      const pointerX = (e.clientX - bounds.left) * (app.canvas.width / bounds.width);
+      const halfChannel = activeLayout.channelWidth / 2;
+      
       state.targetCaptureX = Math.max(
         activeLayout.gameplayAxisX - halfChannel,
         Math.min(activeLayout.gameplayAxisX + halfChannel, pointerX)
@@ -346,44 +353,48 @@ export async function createDockRuntime(
           const rodTipWorldX = charNodes.boatRoot.x + charNodes.boatBob.x + localX * cosT - localY * sinT;
           const rodTipWorldY = charNodes.boatRoot.y + charNodes.boatBob.y + localX * sinT + localY * cosT;
 
-          let hookWorldX, hookWorldY;
-          if (state.fishingState === "idle") {
-            hookWorldX = state.capturePointX;
-            hookWorldY = state.capturePointY;
-          } else if (state.fishingState === "casting") {
+          const HOOK_EYELET_OFFSET_X = HOOK_ASSET_METADATA.eyeletOffsetX * HOOK_ASSET_METADATA.scale;
+          const HOOK_EYELET_OFFSET_Y = HOOK_ASSET_METADATA.eyeletOffsetY * HOOK_ASSET_METADATA.scale;
+
+          let currentCapturePointX = state.capturePointX;
+          let currentCapturePointY = state.capturePointY;
+
+          if (state.fishingState === "casting") {
             const progress = state.castAnimTimer / DUCK_ANIMATION_SOURCE.castDurationSeconds;
             if (progress < 0.65) {
-               hookWorldX = rodTipWorldX;
-               hookWorldY = rodTipWorldY;
+               currentCapturePointX = rodTipWorldX - HOOK_EYELET_OFFSET_X;
+               currentCapturePointY = rodTipWorldY - HOOK_EYELET_OFFSET_Y;
             } else {
                const t = (progress - 0.65) / 0.35;
-               hookWorldX = rodTipWorldX + (state.capturePointX - rodTipWorldX) * t;
-               hookWorldY = rodTipWorldY + (state.capturePointY - rodTipWorldY) * t;
+               const smoothRodTipX = charNodes.boatRoot.x + localX * cosT - localY * sinT; 
+               const earlyCaptureX = smoothRodTipX - HOOK_EYELET_OFFSET_X;
+               const earlyCaptureY = rodTipWorldY - HOOK_EYELET_OFFSET_Y;
+               
+               currentCapturePointX = earlyCaptureX + (state.capturePointX - earlyCaptureX) * t;
+               currentCapturePointY = earlyCaptureY + (state.capturePointY - earlyCaptureY) * t;
             }
-          } else if (state.fishingState === "surfaceBurst" || state.fishingState === "payout") {
-            hookWorldX = state.capturePointX;
-            hookWorldY = state.capturePointY;
-          } else {
-            hookWorldX = state.capturePointX;
-            hookWorldY = state.capturePointY;
           }
+
+          const currentEyeletX = currentCapturePointX + HOOK_EYELET_OFFSET_X;
+          const currentEyeletY = currentCapturePointY + HOOK_EYELET_OFFSET_Y;
 
           // Hook visibility: fade out during surfaceBurst and payout
           if (state.fishingState === "surfaceBurst" || state.fishingState === "payout") {
-            hookGraphic.alpha = Math.max(0, hookGraphic.alpha - 5 * dt);
+            hookSprite.alpha = Math.max(0, hookSprite.alpha - 5 * dt);
           } else {
-            hookGraphic.alpha = 1;
+            hookSprite.alpha = 1;
           }
-          hookGraphic.position.set(hookWorldX, hookWorldY);
+          hookSprite.rotation = 0;
+          hookSprite.position.set(currentCapturePointX, currentCapturePointY);
 
           // Fishing line: only draw during idle/casting/descending/ascending
           fishingLine.clear();
           if (state.fishingState !== "surfaceBurst" && state.fishingState !== "payout") {
             fishingLine.moveTo(rodTipWorldX, rodTipWorldY);
             if (state.fishingState === "idle") {
-              fishingLine.quadraticCurveTo(rodTipWorldX, hookWorldY, hookWorldX, hookWorldY);
+              fishingLine.quadraticCurveTo(rodTipWorldX, currentEyeletY, currentEyeletX, currentEyeletY);
             } else {
-              fishingLine.lineTo(hookWorldX, hookWorldY);
+              fishingLine.lineTo(currentEyeletX, currentEyeletY);
             }
             fishingLine.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
           }
@@ -436,8 +447,8 @@ export async function createDockRuntime(
 
           if (state.fishingState === "payout") {
             payoutTimer += dt;
-            const staggerDelay = 0.05; // 50ms between each fish
-            const fishAnimDuration = 0.4;
+            const staggerDelay = 0.08; // 80ms between each fish
+            const fishAnimDuration = 0.7; // jump duration
 
             const goodFish = caughtFishList.filter((f) => !f.kind.isBad);
 
@@ -449,21 +460,52 @@ export async function createDockRuntime(
               if (fishAge > 0) {
                 if (!fish.payoutStarted) {
                   fish.payoutStarted = true;
-                  // Pop up gently near the waterline — NOT thrown sideways
-                  fish.vx = (Math.random() - 0.5) * 25;
-                  fish.depthY = activeLayout.waterlineY - 5 - Math.random() * 8;
+                  // Start at waterline, random horizontal spread
+                  fish.vx = (Math.random() - 0.5) * 150;
+                  fish.depthY = activeLayout.waterlineY - 10;
                   fish.node.position.set(fish.x, fish.depthY);
-                  spawnFloatingText(`+${fish.kind.value}đ`, "#3ae874", fish.x, fish.depthY - 12);
                   Promise.resolve(gameAudio.play("buy")).catch(() => {});
                 }
+                
                 const progress = Math.min(1, fishAge / fishAnimDuration);
+                
+                // Jump arc
                 fish.x += fish.vx * dt;
-                fish.depthY -= 20 * dt; // gentle rise
+                // Cubic ease-out for jump (fast up, slows down at peak)
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const jumpHeight = Math.min(activeLayout.height * 0.3, activeLayout.waterlineY - 30); // Approx 30% viewport, keep some margin
+                fish.depthY = (activeLayout.waterlineY - 10) - jumpHeight * easeOut;
+                
                 fish.node.position.set(fish.x, fish.depthY);
-                fish.node.alpha = Math.max(0, 1 - progress);
-                const s = 0.6 * (1 - progress * 0.5);
-                fish.node.scale.set(fish.vx >= 0 ? s : -s, s);
-                fish.node.rotation = Math.sin(fishAge * 6) * 0.08;
+                
+                // Transition to Coin near apex
+                if (progress > 0.8) {
+                    if (!(fish as any).coinSprite) {
+                       fish.node.clear();
+                       const cSprite = new Sprite(coinTexture);
+                       cSprite.anchor.set(0.5);
+                       cSprite.scale.set(0.06); 
+                       (fish as any).coinSprite = cSprite;
+                       fish.node.addChild(cSprite);
+                       fish.node.rotation = 0; // reset tumbling so coin is upright
+                    }
+                    const cSprite = (fish as any).coinSprite;
+                    const coinProg = (progress - 0.8) / 0.2; // 0 to 1
+                    cSprite.y = -coinProg * 20;
+                    fish.node.alpha = 1 - coinProg;
+
+                    // Spawn text exactly when coin starts (at the peak)
+                    if (!(fish as any).textSpawned) {
+                       (fish as any).textSpawned = true;
+                       spawnFloatingText(`+${fish.kind.value}đ`, "#3ae874", fish.x, fish.depthY - 15);
+                    }
+                } else {
+                    fish.node.alpha = 1;
+                    const s = 0.6 + progress * 0.2; // Scale slightly as it flies up
+                    fish.node.scale.set(fish.vx >= 0 ? s : -s, s);
+                    // Tumble while flying
+                    fish.node.rotation += (fish.vx > 0 ? 8 : -8) * dt;
+                }
               }
             }
 
