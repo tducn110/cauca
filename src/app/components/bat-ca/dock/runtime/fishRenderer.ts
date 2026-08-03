@@ -1,4 +1,5 @@
-import { Graphics } from 'pixi.js';
+import { Graphics, Container } from 'pixi.js';
+import { createSpecialEffect } from './specialEffects';
 import type { FishKind } from '../../game/types';
 import type { ActiveFish } from './runtimeTypes';
 import type { DockViewportLayout } from '../dockLayout';
@@ -144,8 +145,15 @@ export function createFishPool(options: {
       ? selectWeightedFishKind(matching)
       : selectWeightedFishKind(nearestFishKinds(fallbackKinds, depthMeters));
 
-    const node = new Graphics();
-    drawFishShape(node, kind, kind.size);
+    const node = new Container();
+    const bodyGraphic = new Graphics();
+    drawFishShape(bodyGraphic, kind, kind.size);
+    node.addChild(bodyGraphic);
+
+    let effectController = undefined;
+    if (kind.specialVisual) {
+       effectController = createSpecialEffect(kind.specialVisual, node, bodyGraphic, kind);
+    }
 
     const startX = options.layout.gameplayAxisX + (Math.random() - 0.5) * options.layout.channelWidth * 0.9;
     const startY = options.layout.waterlineY + 80 + depthRatio * totalDepthPx;
@@ -163,6 +171,8 @@ export function createFishPool(options: {
       vx,
       size: kind.size,
       node,
+      bodyGraphic,
+      effectController,
       isCaught: false,
     });
   }
@@ -180,6 +190,12 @@ export function updateFishPositions(
   const channelHalf = layout.channelWidth * 0.45;
   const minX = layout.gameplayAxisX - channelHalf;
   const maxX = layout.gameplayAxisX + channelHalf;
+
+  for (const fish of activeFishList) {
+    if (fish.effectController) {
+      fish.effectController.update(dt, fish);
+    }
+  }
 
   for (const fish of activeFishList) {
     if (fish.isCaught) {
@@ -215,13 +231,14 @@ export function destroyFishNodes(
   caughtFishList: ActiveFish[],
   reportError: (error: unknown, operation: string) => void
 ): void {
-  const nodes = new Set<Graphics>();
-  for (const fish of activeFishList) nodes.add(fish.node);
-  for (const fish of caughtFishList) nodes.add(fish.node);
-  for (const node of nodes) {
+  const allFish = new Set([...activeFishList, ...caughtFishList]);
+  for (const fish of allFish) {
     try {
-      if (!node.destroyed) {
-        node.destroy();
+      if (fish.effectController) {
+         fish.effectController.destroy();
+      }
+      if (!fish.node.destroyed) {
+        fish.node.destroy({ children: true });
       }
     } catch (error) {
       reportError(error, "destroyFishNode");

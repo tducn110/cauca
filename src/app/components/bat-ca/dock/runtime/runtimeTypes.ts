@@ -17,7 +17,13 @@ export type ActiveFish = {
   depthY: number;
   vx: number;
   size: number;
-  node: Graphics;
+  node: Container;
+  bodyGraphic: Graphics;
+  effectController?: {
+    update: (dt: number, fish: ActiveFish) => void;
+    onCaught: (fish: ActiveFish) => void;
+    destroy: () => void;
+  };
   isCaught: boolean;
   payoutStarted?: boolean;
 };
