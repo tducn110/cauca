@@ -33,6 +33,29 @@ export type RuntimeCallbacks = {
 
 export type DockSceneRuntimeInstance = DockSceneRuntime & { destroy: () => void };
 
+/**
+ * Smooth rod-tip anchor for the cast swing.
+ *
+ * The duck casts through 6 discrete keyframes whose rod-tip markers can jump
+ * vertically (e.g. y 334→188→169→146→310→331). Snapping the fishing line origin
+ * and hook to those markers each frame makes the (otherwise static) hook texture
+ * visibly "jerk up and down". Interpolating the two adjacent keyframes by the
+ * exact cast progress keeps the line/hook moving continuously during the swing.
+ */
+function interpolatedRodTip(progress: number): { x: number; y: number } {
+  const safe = Math.min(1, Math.max(0, progress));
+  const count = ROD_TIP_BY_FRAME.length;
+  const seg = safe * (count - 1);
+  const i = Math.floor(seg);
+  const t = seg - i;
+  const a = ROD_TIP_BY_FRAME[Math.min(i, count - 1)];
+  const b = ROD_TIP_BY_FRAME[Math.min(i + 1, count - 1)];
+  return {
+    x: a.x + (b.x - a.x) * t,
+    y: a.y + (b.y - a.y) * t,
+  };
+}
+
 export async function createDockRuntime(
   host: HTMLDivElement,
   initialLayout: DockViewportLayout,
@@ -330,8 +353,171 @@ export async function createDockRuntime(
           gauge.update(dt);
           gauge.visible = state.fishingState === "idle";
 
-          // Animate the water surface, then make the boat ride the same wave
-          // that is drawn under its hull (bob follows height, tilt follows slope).
+          // --- 1. SIMULATION PHASE ---
+          // Advance state timers and state machine transitions
+          if (state.fishingState === "casting") {
+            state.castAnimTimer += dt;
+            if (state.castAnimTimer >= DUCK_ANIMATION_SOURCE.castDurationSeconds) {
+              state.fishingState = "descending";
+              charNodes.sprite.currentFrame = 0;
+            }
+          }
+
+          tickCaptureState(state, dt, activeLayout, activeFishList, caughtFishList, {
+            onFishCaught: (fish) => {
+              caughtFishList.push(fish);
+              if (fish.kind.isBad) {
+                Promise.resolve(gameAudio.play("fail")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
+                spawnFloatingText(`${fish.kind.name}`, "#e84a4a", fish.x, fish.depthY);
+              } else {
+                recordDiscoveredFish([fish.kind.type]);
+              }
+              
+              if (fish.effectController) {
+                try {
+                  fish.effectController.onCaught(fish);
+                } catch (err) {
+                  reportRuntimeError(err, { area: "specialEffects", operation: "onCaught", fatal: false });
+                }
+              }
+            },
+            onCapacityFull: (x, y) => {
+              spawnFloatingText("ĐẦY LƯỠI!", "#ffcf32", x, y);
+            }
+          });
+
+          // DEPTH MILESTONE
+          if (state.fishingState === "descending") {
+            const currentDepthM = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
+            const currentMilestone = Math.floor(currentDepthM / 500) * 500;
+            if (currentMilestone > lastShownMilestone && currentMilestone > 0) {
+              lastShownMilestone = currentMilestone;
+              milestoneTimer = 0;
+              depthMilestoneLabel.text = `${currentMilestone}m`;
+              depthMilestoneLabel.alpha = 1;
+            }
+          }
+
+          if (depthMilestoneLabel.alpha > 0) {
+            milestoneTimer += dt;
+            if (state.fishingState !== "descending") {
+              depthMilestoneLabel.alpha = Math.max(0, depthMilestoneLabel.alpha - 5 * dt);
+            } else if (milestoneTimer > 0.5) {
+              depthMilestoneLabel.alpha = Math.max(0, 1 - (milestoneTimer - 0.5) / 0.4);
+            }
+          }
+
+          const depthMeters = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
+
+          // Payout animation state advance
+          if (state.fishingState === "payout") {
+            payoutTimer += dt;
+            const staggerDelay = 0.08;
+            const fishAnimDuration = 0.7;
+
+            const goodFish = caughtFishList.filter((f) => !f.kind.isBad);
+
+            for (let i = 0; i < goodFish.length; i++) {
+              const fish = goodFish[i];
+              const fishDelay = i * staggerDelay;
+              const fishAge = payoutTimer - fishDelay;
+
+              if (fishAge > 0) {
+                if (!fish.payoutStarted) {
+                  fish.payoutStarted = true;
+                  fish.vx = (Math.random() - 0.5) * 150;
+                  fish.depthY = activeLayout.waterlineY - 10;
+                  fish.node.position.set(fish.x, fish.depthY);
+                  Promise.resolve(gameAudio.play("buy")).catch(() => {});
+                }
+                
+                const progress = Math.min(1, fishAge / fishAnimDuration);
+                fish.x += fish.vx * dt;
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                const jumpHeight = Math.min(activeLayout.height * 0.3, activeLayout.waterlineY - 30);
+                fish.depthY = (activeLayout.waterlineY - 10) - jumpHeight * easeOut;
+                fish.node.position.set(fish.x, fish.depthY);
+                
+                if (progress > 0.8) {
+                    if (!(fish as any).coinSprite) {
+                       fish.bodyGraphic.clear();
+                       const cSprite = new Sprite(coinTexture);
+                       cSprite.anchor.set(0.5);
+                       cSprite.scale.set(0.06); 
+                       (fish as any).coinSprite = cSprite;
+                       fish.node.addChild(cSprite);
+                       fish.node.rotation = 0;
+                    }
+                    const cSprite = (fish as any).coinSprite;
+                    const coinProg = (progress - 0.8) / 0.2;
+                    cSprite.y = -coinProg * 20;
+                    fish.node.alpha = 1 - coinProg;
+
+                    if (!(fish as any).textSpawned) {
+                       (fish as any).textSpawned = true;
+                       spawnFloatingText(`+${fish.kind.value}đ`, "#3ae874", fish.x, fish.depthY - 15);
+                    }
+                } else {
+                    fish.node.alpha = 1;
+                    const s = 0.6 + progress * 0.2;
+                    fish.node.scale.set(fish.vx >= 0 ? s : -s, s);
+                    fish.node.rotation += (fish.vx > 0 ? 8 : -8) * dt;
+                }
+              }
+            }
+
+            for (const fish of caughtFishList) {
+              if (!fish.kind.isBad) continue;
+              if (!fish.payoutStarted) fish.payoutStarted = true;
+              fish.node.alpha = Math.max(0, fish.node.alpha - 3 * dt);
+            }
+
+            const totalPayoutTime = goodFish.length * staggerDelay + fishAnimDuration + 0.15;
+            if (payoutTimer >= totalPayoutTime && !state.resultFired) {
+              state.resultFired = true;
+              const totalEarned = caughtFishList.reduce((s, f) => s + (f.kind.isBad ? 0 : f.kind.value), 0);
+              const caughtTypes = caughtFishList.filter((f) => !f.kind.isBad).map((f) => f.kind.type);
+
+              Promise.resolve(gameAudio.play("sell")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
+
+              if (totalEarned > 0) {
+                spawnFloatingText(`+${totalEarned.toLocaleString("vi-VN")}đ`, "#ffe32a", activeLayout.gameplayAxisX, activeLayout.waterlineY - 40);
+              }
+
+              try {
+                callbacks.catchCompleteRef.current?.({ earned: totalEarned, caughtCount: caughtTypes.length, caughtFishTypes: caughtTypes });
+              } catch (error) {
+                reportRuntimeError(error, { area: "createDockRuntime", operation: "onCatchComplete", fatal: false });
+              }
+
+              destroyFishNodes(activeFishList, caughtFishList, (e, op) => reportRuntimeError(e, { area: "createDockRuntime", operation: op, fatal: false }));
+              activeFishList = [];
+              caughtFishList = [];
+              destroyFloatingTexts();
+
+              gauge.reset();
+              state.fishingState = "idle";
+              gauge.setDisabled(callbacks.disabledRef.current);
+              lastReportedState = "idle";
+            }
+          }
+
+          updateFishPositions(activeFishList, caughtFishList, state.capturePointX, state.capturePointY, { ...activeLayout, __fishingState: state.fishingState } as any, dt);
+
+          for (let i = floatingTextList.length - 1; i >= 0; i--) {
+            const item = floatingTextList[i];
+            item.age += dt;
+            item.y -= 30 * dt;
+            item.root.position.y = item.y;
+            item.root.alpha = Math.max(0, 1 - item.age / item.life);
+            if (item.age >= item.life) {
+              item.root.destroy();
+              floatingTextList.splice(i, 1);
+            }
+          }
+
+
+          // --- 2. RENDER PHASE ---
           updateWaterSurface({ rearWave, frontWave }, activeLayout, elapsed);
           const boatWaveMotion = sampleBoatWaveMotion(activeLayout.boatAnchor.x, elapsed);
 
@@ -340,7 +526,12 @@ export async function createDockRuntime(
           );
 
           const frame = charNodes.sprite.currentFrame;
-          const marker = ROD_TIP_BY_FRAME[frame];
+          const castProgress = state.fishingState === "casting"
+            ? Math.min(1, state.castAnimTimer / DUCK_ANIMATION_SOURCE.castDurationSeconds)
+            : -1;
+          const marker = castProgress >= 0
+            ? interpolatedRodTip(castProgress)
+            : ROD_TIP_BY_FRAME[frame];
 
           const scaleX = charNodes.sprite.scale.x;
           const scaleY = charNodes.sprite.scale.y;
@@ -378,7 +569,6 @@ export async function createDockRuntime(
           const currentEyeletX = currentCapturePointX + HOOK_EYELET_OFFSET_X;
           const currentEyeletY = currentCapturePointY + HOOK_EYELET_OFFSET_Y;
 
-          // Hook visibility: fade out during surfaceBurst and payout
           if (state.fishingState === "surfaceBurst" || state.fishingState === "payout") {
             hookSprite.alpha = Math.max(0, hookSprite.alpha - 5 * dt);
           } else {
@@ -387,7 +577,6 @@ export async function createDockRuntime(
           hookSprite.rotation = 0;
           hookSprite.position.set(currentCapturePointX, currentCapturePointY);
 
-          // Fishing line: only draw during idle/casting/descending/ascending
           fishingLine.clear();
           if (state.fishingState !== "surfaceBurst" && state.fishingState !== "payout") {
             fishingLine.moveTo(rodTipWorldX, rodTipWorldY);
@@ -399,202 +588,9 @@ export async function createDockRuntime(
             fishingLine.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
           }
 
-          if (state.fishingState === "casting") {
-            state.castAnimTimer += dt;
-            if (state.castAnimTimer >= DUCK_ANIMATION_SOURCE.castDurationSeconds) {
-              state.fishingState = "descending";
-              charNodes.sprite.currentFrame = 0;
-            }
-          }
-
           updateAmbient(ambient, activeLayout, elapsed);
 
-          tickCaptureState(state, dt, activeLayout, activeFishList, caughtFishList, {
-            onFishCaught: (fish) => {
-              caughtFishList.push(fish);
-              if (fish.kind.isBad) {
-                Promise.resolve(gameAudio.play("fail")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
-                spawnFloatingText(`${fish.kind.name}`, "#e84a4a", fish.x, fish.depthY);
-              } else {
-                recordDiscoveredFish([fish.kind.type]);
-              }
-            },
-            onCapacityFull: (x, y) => {
-              spawnFloatingText("ĐẦY LƯỠI!", "#ffcf32", x, y);
-            }
-          });
-
-          // ── DEPTH MILESTONE ── Only in descending, popup at 500m intervals
-          if (state.fishingState === "descending") {
-            const currentDepthM = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
-            const currentMilestone = Math.floor(currentDepthM / 500) * 500;
-            if (currentMilestone > lastShownMilestone && currentMilestone > 0) {
-              lastShownMilestone = currentMilestone;
-              milestoneTimer = 0;
-              depthMilestoneLabel.text = `${currentMilestone}m`;
-              depthMilestoneLabel.alpha = 1;
-            }
-          }
-          // Milestone fade: hold 0.5s then fade 0.4s. Quick fade in ascending.
-          if (depthMilestoneLabel.alpha > 0) {
-            milestoneTimer += dt;
-            if (state.fishingState !== "descending") {
-              depthMilestoneLabel.alpha = Math.max(0, depthMilestoneLabel.alpha - 5 * dt);
-            } else if (milestoneTimer > 0.5) {
-              depthMilestoneLabel.alpha = Math.max(0, 1 - (milestoneTimer - 0.5) / 0.4);
-            }
-          }
-
-          if (state.fishingState === "payout") {
-            payoutTimer += dt;
-            const staggerDelay = 0.08; // 80ms between each fish
-            const fishAnimDuration = 0.7; // jump duration
-
-            const goodFish = caughtFishList.filter((f) => !f.kind.isBad);
-
-            for (let i = 0; i < goodFish.length; i++) {
-              const fish = goodFish[i];
-              const fishDelay = i * staggerDelay;
-              const fishAge = payoutTimer - fishDelay;
-
-              if (fishAge > 0) {
-                if (!fish.payoutStarted) {
-                  fish.payoutStarted = true;
-                  // Start at waterline, random horizontal spread
-                  fish.vx = (Math.random() - 0.5) * 150;
-                  fish.depthY = activeLayout.waterlineY - 10;
-                  fish.node.position.set(fish.x, fish.depthY);
-                  Promise.resolve(gameAudio.play("buy")).catch(() => {});
-                }
-                
-                const progress = Math.min(1, fishAge / fishAnimDuration);
-                
-                // Jump arc
-                fish.x += fish.vx * dt;
-                // Cubic ease-out for jump (fast up, slows down at peak)
-                const easeOut = 1 - Math.pow(1 - progress, 3);
-                const jumpHeight = Math.min(activeLayout.height * 0.3, activeLayout.waterlineY - 30); // Approx 30% viewport, keep some margin
-                fish.depthY = (activeLayout.waterlineY - 10) - jumpHeight * easeOut;
-                
-                fish.node.position.set(fish.x, fish.depthY);
-                
-                // Transition to Coin near apex
-                if (progress > 0.8) {
-                    if (!(fish as any).coinSprite) {
-                       fish.node.clear();
-                       const cSprite = new Sprite(coinTexture);
-                       cSprite.anchor.set(0.5);
-                       cSprite.scale.set(0.06); 
-                       (fish as any).coinSprite = cSprite;
-                       fish.node.addChild(cSprite);
-                       fish.node.rotation = 0; // reset tumbling so coin is upright
-                    }
-                    const cSprite = (fish as any).coinSprite;
-                    const coinProg = (progress - 0.8) / 0.2; // 0 to 1
-                    cSprite.y = -coinProg * 20;
-                    fish.node.alpha = 1 - coinProg;
-
-                    // Spawn text exactly when coin starts (at the peak)
-                    if (!(fish as any).textSpawned) {
-                       (fish as any).textSpawned = true;
-                       spawnFloatingText(`+${fish.kind.value}đ`, "#3ae874", fish.x, fish.depthY - 15);
-                    }
-                } else {
-                    fish.node.alpha = 1;
-                    const s = 0.6 + progress * 0.2; // Scale slightly as it flies up
-                    fish.node.scale.set(fish.vx >= 0 ? s : -s, s);
-                    // Tumble while flying
-                    fish.node.rotation += (fish.vx > 0 ? 8 : -8) * dt;
-                }
-              }
-            }
-
-            // Bad fish just fade quickly
-            for (const fish of caughtFishList) {
-              if (!fish.kind.isBad) continue;
-              if (!fish.payoutStarted) fish.payoutStarted = true;
-              fish.node.alpha = Math.max(0, fish.node.alpha - 3 * dt);
-            }
-
-            // After all fish animated + 150ms gap, fire result ONCE
-            const totalPayoutTime = goodFish.length * staggerDelay + fishAnimDuration + 0.15;
-            if (payoutTimer >= totalPayoutTime && !state.resultFired) {
-              state.resultFired = true;
-              const totalEarned = caughtFishList.reduce((s, f) => s + (f.kind.isBad ? 0 : f.kind.value), 0);
-              const caughtTypes = caughtFishList.filter((f) => !f.kind.isBad).map((f) => f.kind.type);
-
-              Promise.resolve(gameAudio.play("sell")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
-
-              if (totalEarned > 0) {
-                spawnFloatingText(`+${totalEarned.toLocaleString("vi-VN")}đ`, "#ffe32a", activeLayout.gameplayAxisX, activeLayout.waterlineY - 40);
-              }
-
-              try {
-                callbacks.catchCompleteRef.current?.({ earned: totalEarned, caughtCount: caughtTypes.length, caughtFishTypes: caughtTypes });
-              } catch (error) {
-                reportRuntimeError(error, { area: "createDockRuntime", operation: "onCatchComplete", fatal: false });
-              }
-
-              destroyFishNodes(activeFishList, caughtFishList, (e, op) => reportRuntimeError(e, { area: "createDockRuntime", operation: op, fatal: false }));
-              activeFishList = [];
-              caughtFishList = [];
-              destroyFloatingTexts();
-
-              gauge.reset();
-              state.fishingState = "idle";
-              gauge.setDisabled(callbacks.disabledRef.current);
-              // Suppress stateChange for this transition so React keeps the result overlay
-              lastReportedState = "idle";
-            }
-          }
-
-          updateFishPositions(activeFishList, caughtFishList, state.capturePointX, state.capturePointY, { ...activeLayout, __fishingState: state.fishingState } as any, dt);
-
-          for (let i = floatingTextList.length - 1; i >= 0; i--) {
-            const item = floatingTextList[i];
-            item.age += dt;
-            item.y -= 30 * dt;
-            item.root.position.y = item.y;
-            item.root.alpha = Math.max(0, 1 - item.age / item.life);
-            if (item.age >= item.life) {
-              item.root.destroy();
-              floatingTextList.splice(i, 1);
-            }
-          }
-
           worldContainer.position.y = -state.cameraY;
-
-          const depthMeters = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
-
-          if (state.fishingState === "descending") {
-            const currentMilestone = Math.floor(depthMeters / 50) * 50;
-            if (currentMilestone > 0 && currentMilestone > lastShownMilestone) {
-              lastShownMilestone = currentMilestone;
-              depthMilestoneLabel.text = `${currentMilestone}m`;
-              milestoneTimer = 1.1; // 0.7s show + 0.4s fade
-            }
-          }
-
-          if (milestoneTimer > 0) {
-            milestoneTimer -= dt;
-            if (milestoneTimer <= 0) {
-              milestoneTimer = 0;
-              depthMilestoneLabel.alpha = 0;
-            } else {
-              if (milestoneTimer > 0.4) {
-                depthMilestoneLabel.alpha = 1;
-                let scale = 1.0;
-                if (milestoneTimer > 0.9) {
-                  const sp = (1.1 - milestoneTimer) / 0.2;
-                  scale = 0.85 + 0.15 * sp;
-                }
-                depthMilestoneLabel.scale.set(scale);
-              } else {
-                depthMilestoneLabel.alpha = milestoneTimer / 0.4;
-                depthMilestoneLabel.scale.set(1.0);
-              }
-            }
-          }
 
           const currentRunEarnings = caughtFishList.reduce((sum, f) => sum + (f.kind.isBad ? 0 : f.kind.value), 0);
           const stateChanged = state.fishingState !== lastReportedState;

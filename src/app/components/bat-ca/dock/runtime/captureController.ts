@@ -16,6 +16,8 @@ export type CaptureState = {
   maxCapacityCount: number;
   surfaceBurstTimer: number;
   resultFired: boolean;
+  /** Seconds to hold the hook still at the bottom before reversing to ascending. */
+  bottomHoldTimer: number;
 };
 
 export function createCaptureController(initialLayout: DockViewportLayout): CaptureState {
@@ -33,6 +35,7 @@ export function createCaptureController(initialLayout: DockViewportLayout): Capt
     maxCapacityCount: 0,
     surfaceBurstTimer: 0,
     resultFired: false,
+    bottomHoldTimer: 0,
   };
 }
 
@@ -56,6 +59,18 @@ export function distanceToSegment(
   const closestX = ax + t * dx;
   const closestY = ay + t * dy;
   return Math.hypot(px - closestX, py - closestY);
+}
+
+/**
+ * Frame-rate independent exponential approach.
+ * Equivalent to `value += (target - value) * (1 - e^(-rate * dt))`, so the
+ * per-frame step is identical regardless of how unevenly `dt` is delivered.
+ * This removes the "jumping between coordinates" seen on a stuttering device
+ * where the old `value += (target - value) * rate * dt` form moved differently
+ * on every frame.
+ */
+function expoStep(value: number, target: number, rate: number, dt: number): number {
+  return value + (target - value) * (1 - Math.exp(-rate * dt));
 }
 
 export function tickCaptureState(
@@ -82,22 +97,31 @@ export function tickCaptureState(
     state.resultFired = false;
   } else if (state.fishingState === "descending") {
     // DESCENDING: plunge straight down. NO collision, NO catch.
-    const plungeSpeed = (450 + state.targetDepthMeters * 0.8) * (0.85 + state.castPowerFactor * 0.3);
-    state.capturePointY += plungeSpeed * dt;
-    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 5 * dt;
+    const plankBottomY = layout.waterlineY + totalDepthPx;
+    const baseSpeed = 450 + state.targetDepthMeters * 0.8;
 
-    // Camera follows only after hook is clearly below the surface
-    if (state.capturePointY > layout.waterlineY + 50) {
+    // Decelerate smoothly as the hook nears the bottom (avoid a hard slam).
+    const remaining = Math.max(0, plankBottomY - state.capturePointY);
+    const slow = Math.min(1, remaining / 100); // 1 far away, → ~0 at the bottom
+    const plungeSpeed = baseSpeed * (0.85 + state.castPowerFactor * 0.3) * (0.2 + 0.8 * slow);
+    state.capturePointY = Math.min(plankBottomY, state.capturePointY + plungeSpeed * dt);
+    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
+
+    if (state.capturePointY >= plankBottomY) {
+      // Reached the bottom: settle X/camera and hold briefly before reversing,
+      // so the hook doesn't violently snap from full speed down to full speed up.
+      if (state.bottomHoldTimer <= 0) state.bottomHoldTimer = 0.22;
+
+      state.bottomHoldTimer -= dt;
+      if (state.bottomHoldTimer <= 0) {
+        state.fishingState = "ascending";
+        state.previousCapturePointX = state.capturePointX;
+        state.previousCapturePointY = state.capturePointY;
+      }
+    } else if (state.capturePointY > layout.waterlineY + 50) {
+      // Camera follows only after hook is clearly below the surface
       const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
-      state.cameraY += (targetCamY - state.cameraY) * 6 * dt;
-    }
-
-    // Immediate transition to ascending at bottom — no pause, no hold
-    if (state.capturePointY >= layout.waterlineY + totalDepthPx) {
-      state.capturePointY = layout.waterlineY + totalDepthPx;
-      state.fishingState = "ascending";
-      state.previousCapturePointX = state.capturePointX;
-      state.previousCapturePointY = state.capturePointY;
+      state.cameraY = expoStep(state.cameraY, targetCamY, 6, dt);
     }
   } else if (state.fishingState === "ascending") {
     // ASCENDING: only state where catching is allowed.
@@ -108,10 +132,10 @@ export function tickCaptureState(
     const atCapacity = caughtFishList.length >= state.maxCapacityCount;
     const reelSpeed = 220 + (atCapacity ? 100 : 0);
     state.capturePointY -= reelSpeed * dt;
-    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 5 * dt;
+    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
 
     const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
-    state.cameraY += (targetCamY - state.cameraY) * 8 * dt;
+    state.cameraY = expoStep(state.cameraY, targetCamY, 8, dt);
 
     // Swept circle collision — ONLY in ascending and under capacity
     const canCatch = caughtFishList.length < state.maxCapacityCount;
@@ -149,8 +173,8 @@ export function tickCaptureState(
   } else if (state.fishingState === "surfaceBurst") {
     // SURFACE BURST: brief 300ms, camera returns to dock, hook/line fade.
     state.surfaceBurstTimer -= dt;
-    state.capturePointX += (layout.gameplayAxisX - state.capturePointX) * 10 * dt;
-    state.cameraY += (0 - state.cameraY) * 10 * dt;
+    state.capturePointX = expoStep(state.capturePointX, layout.gameplayAxisX, 10, dt);
+    state.cameraY = expoStep(state.cameraY, 0, 10, dt);
 
     if (state.surfaceBurstTimer <= 0) {
       state.fishingState = "payout";

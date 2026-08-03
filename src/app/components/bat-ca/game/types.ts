@@ -6,6 +6,8 @@ export type FishBehavior = "normal" | "fast" | "electric" | "mystery" | "golden"
 export type BuffType = "dynamite" | "strength" | "time" | "bigNet";
 export type BuffState = Partial<Record<BuffType, number>>;
 
+export type SpecialVisual = "golden" | "electric" | "ghost" | "rainbow";
+
 export type FishKind = {
   type: string;
   name: string;
@@ -21,6 +23,7 @@ export type FishKind = {
   behavior: FishBehavior;
   color: string;
   belly: string;
+  specialVisual?: SpecialVisual;
 };
 
 export type Fish = {
