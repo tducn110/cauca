@@ -16,7 +16,7 @@ import {
   OFFLINE_RATE_PER_MINUTE,
 } from "./economyConfig";
 import type { BuffState, BuffType, UpgradeType, Upgrades } from "./types";
-import { HOOK_DEFINITIONS, RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
+import { HOOK_DEFINITIONS, getHookUnlockPrice, getHookDefinition } from "./hooks-data";
 import { FISH_KINDS } from "./fish-data";
 
 const STORE_KEY = "batca-ao-lang-save";
@@ -261,22 +261,21 @@ export function unlockRandomHook(): { success: boolean; unlockedHookId?: string;
   if (locked.length === 0) {
     return { success: false, reason: "all-unlocked" };
   }
-  if (save.money < RANDOM_HOOK_UNLOCK_PRICE) {
+  
+  const currentPrice = getHookUnlockPrice(save.unlockedHooks.length);
+  
+  if (save.money < currentPrice) {
     return { success: false, reason: "insufficient-funds" };
   }
 
-  const chosenIndex = Math.floor(Math.random() * locked.length);
-  const chosen = locked[chosenIndex];
-  const newUnlocked = [...save.unlockedHooks, chosen.id];
-  const newMoney = save.money - RANDOM_HOOK_UNLOCK_PRICE;
-
+  const randomHook = locked[Math.floor(Math.random() * locked.length)];
   saveProgress({
-    money: newMoney,
-    unlockedHooks: newUnlocked,
-    selectedHook: chosen.id,
+    money: save.money - currentPrice,
+    unlockedHooks: [...save.unlockedHooks, randomHook.id],
+    selectedHook: randomHook.id,
   });
 
-  return { success: true, unlockedHookId: chosen.id };
+  return { success: true, unlockedHookId: randomHook.id };
 }
 
 // --- Fish Discovery for Aquarium ---
@@ -308,13 +307,18 @@ export function calculateOfflineEarnings(now = Date.now()): { eligibleMinutes: n
   if (elapsedMs < MIN_OFFLINE_ELAPSED_MS) {
     return { eligibleMinutes: 0, amount: 0, lastActive };
   }
+  
+  const equippedHook = getHookDefinition(save.selectedHook);
+  const bonusMs = (equippedHook.offlineTimeBonusHours || 0) * 60 * 60 * 1_000;
+  const maxOfflineMs = MAX_OFFLINE_ELAPSED_MS + bonusMs;
 
   const elapsedMinutes = Math.floor(elapsedMs / 60_000);
-  const maxOfflineMinutes = Math.floor(MAX_OFFLINE_ELAPSED_MS / 60_000);
+  const maxOfflineMinutes = Math.floor(maxOfflineMs / 60_000);
   const eligibleMinutes = Math.min(maxOfflineMinutes, elapsedMinutes);
 
   const ratePerMinute = OFFLINE_RATE_PER_MINUTE[save.offlineRateLevel] || OFFLINE_RATE_PER_MINUTE[0];
-  const amount = eligibleMinutes * ratePerMinute;
+  const multiplier = equippedHook.offlineRateMultiplier || 1.0;
+  const amount = Math.floor(eligibleMinutes * ratePerMinute * multiplier);
 
   return { eligibleMinutes, amount, lastActive };
 }

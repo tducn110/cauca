@@ -19,6 +19,7 @@ type Props = {
   layout: DockViewportLayout;
   capacityLevel: number;
   depthLevel: number;
+  selectedHookId: string;
   onPowerLock?: (result: PowerLockResult) => void;
   onCatchComplete: (summary: CatchSummary) => void;
   onStateChange?: (state: FishingState, depthMeters: number, maxDepthMeters: number, capacity: number, caughtCount: number, runEarnings: number) => void;
@@ -30,6 +31,7 @@ export function FishingDockCanvas({
   layout,
   capacityLevel,
   depthLevel,
+  selectedHookId,
   onPowerLock,
   onCatchComplete,
   onStateChange,
@@ -46,6 +48,7 @@ export function FishingDockCanvas({
   const disabledRef = useRef(disabled);
   const capacityLevelRef = useRef(capacityLevel);
   const depthLevelRef = useRef(depthLevel);
+  const selectedHookIdRef = useRef(selectedHookId);
 
   layoutRef.current = layout;
   callbackRef.current = onPowerLock;
@@ -55,6 +58,7 @@ export function FishingDockCanvas({
   disabledRef.current = disabled;
   capacityLevelRef.current = capacityLevel;
   depthLevelRef.current = depthLevel;
+  selectedHookIdRef.current = selectedHookId;
 
   useLayoutEffect(() => {
     runtimeRef.current?.applyLayout(layout);
@@ -65,8 +69,8 @@ export function FishingDockCanvas({
   }, [disabled]);
 
   useEffect(() => {
-    runtimeRef.current?.updateProgression(capacityLevel, depthLevel);
-  }, [capacityLevel, depthLevel]);
+    runtimeRef.current?.updateProgression(capacityLevel, depthLevel, selectedHookId);
+  }, [capacityLevel, depthLevel, selectedHookId]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -100,6 +104,7 @@ export function FishingDockCanvas({
       stateChangeRef,
       capacityLevelRef,
       depthLevelRef,
+      selectedHookIdRef,
     };
 
     let localRuntime: DockSceneRuntimeInstance | null = null;
@@ -115,6 +120,7 @@ export function FishingDockCanvas({
           runtime.updateProgression(
             capacityLevelRef.current,
             depthLevelRef.current,
+            selectedHookIdRef.current,
           );
         }
       })

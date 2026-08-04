@@ -14,7 +14,7 @@ import {
   normalizeSave,
 } from "./storage";
 import { claimOfflineEarnings } from "../dock/progression";
-import { RANDOM_HOOK_UNLOCK_PRICE } from "./hooks-data";
+import { getHookUnlockPrice } from "./hooks-data";
 
 // Setup memory storage for vitest node env
 class MemoryStorage implements Storage {
@@ -81,12 +81,12 @@ describe("Storage & Save Migration", () => {
     const raw = {
       money: -500,
       bestMoney: Number.NaN,
-      unlockedHooks: ["invalid-id", "silver"],
+      unlockedHooks: ["invalid-id", "fast"],
     };
     const save = normalizeSave(raw);
     expect(save.money).toBe(0);
     expect(save.bestMoney).toBe(0);
-    expect(save.unlockedHooks).toEqual(["classic", "silver"]);
+    expect(save.unlockedHooks).toEqual(["classic", "fast"]);
   });
 });
 
@@ -103,25 +103,25 @@ describe("Hook Collection System", () => {
   });
 
   it("unlocks a random locked hook without duplicates when funds are sufficient", () => {
-    saveProgress({ money: 500, unlockedHooks: ["classic"] });
+    saveProgress({ money: 10000, unlockedHooks: ["classic"] });
     const res = unlockRandomHook();
     expect(res.success).toBe(true);
     expect(res.unlockedHookId).toBeDefined();
     expect(res.unlockedHookId).not.toBe("classic");
 
     const save = loadSave();
-    expect(save.money).toBe(500 - RANDOM_HOOK_UNLOCK_PRICE);
+    expect(save.money).toBe(10000 - getHookUnlockPrice(1));
     expect(save.unlockedHooks).toContain(res.unlockedHookId);
     expect(save.selectedHook).toBe(res.unlockedHookId);
   });
 
   it("allows equipping unlocked hooks", () => {
-    saveProgress({ unlockedHooks: ["classic", "gold"] });
-    const ok = selectHook("gold");
+    saveProgress({ unlockedHooks: ["classic", "lucky_gold"] });
+    const ok = selectHook("lucky_gold");
     expect(ok).toBe(true);
 
     const save = loadSave();
-    expect(save.selectedHook).toBe("gold");
+    expect(save.selectedHook).toBe("lucky_gold");
   });
 
   it("prevents equipping locked hooks", () => {

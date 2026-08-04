@@ -18,6 +18,7 @@ export type CaptureState = {
   resultFired: boolean;
   /** Seconds to hold the hook still at the bottom before reversing to ascending. */
   bottomHoldTimer: number;
+  hookSpeedMultiplier: number;
 };
 
 export function createCaptureController(initialLayout: DockViewportLayout): CaptureState {
@@ -36,6 +37,7 @@ export function createCaptureController(initialLayout: DockViewportLayout): Capt
     surfaceBurstTimer: 0,
     resultFired: false,
     bottomHoldTimer: 0,
+    hookSpeedMultiplier: 1.0,
   };
 }
 
@@ -98,7 +100,7 @@ export function tickCaptureState(
   } else if (state.fishingState === "descending") {
     // DESCENDING: plunge straight down. NO collision, NO catch.
     const plankBottomY = layout.waterlineY + totalDepthPx;
-    const baseSpeed = 450 + state.targetDepthMeters * 0.8;
+    const baseSpeed = (450 + state.targetDepthMeters * 0.8) * state.hookSpeedMultiplier;
 
     // Decelerate smoothly as the hook nears the bottom (avoid a hard slam).
     const remaining = Math.max(0, plankBottomY - state.capturePointY);
@@ -130,7 +132,7 @@ export function tickCaptureState(
     state.previousCapturePointY = state.capturePointY;
 
     const atCapacity = caughtFishList.length >= state.maxCapacityCount;
-    const reelSpeed = 220 + (atCapacity ? 100 : 0);
+    const reelSpeed = (220 + (atCapacity ? 100 : 0)) * state.hookSpeedMultiplier;
     state.capturePointY -= reelSpeed * dt;
     state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
 

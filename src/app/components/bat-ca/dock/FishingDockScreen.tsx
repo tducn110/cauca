@@ -305,6 +305,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
         layout={layout}
         capacityLevel={progression.capacityLevel}
         depthLevel={progression.depthLevel}
+        selectedHookId={progression.selectedHook}
         onPowerLock={lockPower}
         onCatchComplete={handleCatchComplete}
         onStateChange={handleStateChange}

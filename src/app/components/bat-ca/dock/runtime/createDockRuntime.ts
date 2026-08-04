@@ -21,6 +21,7 @@ import {
 import { gameAudio } from '../../../../audio/audioManager';
 import { recordDiscoveredFish } from '../../game/storage';
 import { reportRuntimeError } from '../../../../observability/runtimeErrors';
+import { HOOK_DEFINITIONS, getHookDefinition } from '../../game/hooks-data';
 
 export type RuntimeCallbacks = {
   disabledRef: { current: boolean };
@@ -29,6 +30,7 @@ export type RuntimeCallbacks = {
   stateChangeRef: { current: ((state: FishingState, depthMeters: number, maxDepthMeters: number, capacity: number, caughtCount: number, runEarnings: number) => void) | undefined };
   capacityLevelRef: { current: number };
   depthLevelRef: { current: number };
+  selectedHookIdRef: { current: string };
 };
 
 export type DockSceneRuntimeInstance = DockSceneRuntime & { destroy: () => void };
@@ -101,15 +103,26 @@ export async function createDockRuntime(
     app.canvas.setAttribute("aria-hidden", "true");
     host.prepend(app.canvas);
 
-    const [backgroundTexture, dialTexture, pointerTexture, glowTexture, hookTexture, coinTexture, ...frameTextures] = await Promise.all([
+    const hookLoaders = HOOK_DEFINITIONS.map(h => loadTexture(h.image));
+
+    const [backgroundTexture, dialTexture, pointerTexture, glowTexture, coinTexture, ...otherTextures] = await Promise.all([
       loadTexture(FISHING_DOCK_ASSETS.background),
       loadTexture(FISHING_DOCK_ASSETS.dial),
       loadTexture(FISHING_DOCK_ASSETS.pointer),
       loadTexture(FISHING_DOCK_ASSETS.glow),
-      loadTexture(FISHING_DOCK_ASSETS.hook),
       loadTexture(FISHING_DOCK_ASSETS.coin),
       ...FISHING_DOCK_ASSETS.frames.map((src) => loadTexture(src)),
+      ...hookLoaders
     ]);
+
+    const frameTextures = otherTextures.slice(0, FISHING_DOCK_ASSETS.frames.length);
+    const hookTexturesArray = otherTextures.slice(FISHING_DOCK_ASSETS.frames.length);
+    
+    // Create a map for hook textures
+    const hookTextureMap = new Map<string, any>();
+    HOOK_DEFINITIONS.forEach((h, index) => {
+      hookTextureMap.set(h.id, hookTexturesArray[index]);
+    });
 
     if (signal.canceled) {
       destroy();
@@ -141,12 +154,70 @@ export async function createDockRuntime(
     const frontWaveMask = new Graphics();
     frontWave.mask = frontWaveMask;
     const fishingLine = new Graphics();
-    // Hook sprite: source 1024×1024 RGBA, eyelet at (625,123).
-    // anchor=(0.610, 0.120) places the eyelet ring at hookWorldX/hookWorldY.
-    // scale=0.13 → rendered ~133px tall, clearly visible in scene.
-    const hookSprite = new Sprite(hookTexture);
-    hookSprite.anchor.set(HOOK_ASSET_METADATA.anchorX, HOOK_ASSET_METADATA.anchorY);
-    hookSprite.scale.set(HOOK_ASSET_METADATA.scale);
+    const initialHookId = callbacks.selectedHookIdRef.current;
+    const initialHookTexture = hookTextureMap.get(initialHookId) || hookTextureMap.get("classic");
+    const hookSprite = new Sprite(initialHookTexture);
+    
+    let currentHookMeta = {
+      eyeletOffsetX: HOOK_ASSET_METADATA.eyeletOffsetX,
+      eyeletOffsetY: HOOK_ASSET_METADATA.eyeletOffsetY,
+      scale: HOOK_ASSET_METADATA.scale,
+    };
+
+    const updateHookSprite = (texture: any, hookId: string) => {
+      hookSprite.texture = texture;
+      if (hookId === "fast") {
+        hookSprite.anchor.set(389 / 1024, 824 / 1024);
+        hookSprite.scale.set(0.08);
+        currentHookMeta = {
+          eyeletOffsetX: 652 - 389,
+          eyeletOffsetY: 122 - 824,
+          scale: 0.08,
+        };
+      } else if (hookId === "plus2") {
+        hookSprite.anchor.set(349 / 1024, 832 / 1024);
+        hookSprite.scale.set(0.08);
+        currentHookMeta = {
+          eyeletOffsetX: 664 - 349,
+          eyeletOffsetY: 108 - 832,
+          scale: 0.08,
+        };
+      } else if (hookId === "lucky_gold") {
+        hookSprite.anchor.set(416 / 1024, 784 / 1024);
+        hookSprite.scale.set(0.08);
+        currentHookMeta = {
+          eyeletOffsetX: 578 - 416,
+          eyeletOffsetY: 125 - 784,
+          scale: 0.08,
+        };
+      } else if (hookId === "coin") {
+        hookSprite.anchor.set(532 / 1024, 903 / 1024);
+        hookSprite.scale.set(0.08);
+        currentHookMeta = {
+          eyeletOffsetX: 694 - 532,
+          eyeletOffsetY: 70 - 903,
+          scale: 0.08,
+        };
+      } else if (hookId === "times") {
+        hookSprite.anchor.set(457 / 1024, 887 / 1024);
+        hookSprite.scale.set(0.08);
+        currentHookMeta = {
+          eyeletOffsetX: 663 - 457,
+          eyeletOffsetY: 66 - 887,
+          scale: 0.08,
+        };
+      } else {
+        hookSprite.anchor.set(HOOK_ASSET_METADATA.anchorX, HOOK_ASSET_METADATA.anchorY);
+        hookSprite.scale.set(HOOK_ASSET_METADATA.scale);
+        currentHookMeta = {
+          eyeletOffsetX: HOOK_ASSET_METADATA.eyeletOffsetX,
+          eyeletOffsetY: HOOK_ASSET_METADATA.eyeletOffsetY,
+          scale: HOOK_ASSET_METADATA.scale,
+        };
+      }
+    };
+    
+    updateHookSprite(initialHookTexture, initialHookId);
     
     const fishContainer = new Container();
     const textContainer = new Container();
@@ -189,9 +260,12 @@ export async function createDockRuntime(
           reportRuntimeError(error, { area: "createDockRuntime", operation: "onPowerLock", fatal: false });
         }
         if (state.fishingState === "idle") {
+          const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
           state.targetDepthMeters = INITIAL_MAX_DEPTH + callbacks.depthLevelRef.current * DEPTH_UPGRADE_DELTA;
           state.maxCapacityCount = INITIAL_CAPACITY
-            + callbacks.capacityLevelRef.current * CAPACITY_UPGRADE_DELTA;
+            + callbacks.capacityLevelRef.current * CAPACITY_UPGRADE_DELTA
+            + (currentHookDef.capacityBonus || 0);
+          state.hookSpeedMultiplier = currentHookDef.speedMultiplier || 1.0;
           state.castPowerFactor = result.power;
           state.fishingState = "casting";
           state.castAnimTimer = 0;
@@ -287,10 +361,17 @@ export async function createDockRuntime(
       host.classList.toggle("is-gauge-disabled", nextDisabled || state.fishingState !== "idle");
     };
 
-    const updateProgression = (capLvl: number, depLvl: number) => {
+    const updateProgression = (capLvl: number, depLvl: number, hookId: string) => {
       if (signal.canceled || destroyed) return;
+      const currentHookDef = getHookDefinition(hookId);
       state.targetDepthMeters = INITIAL_MAX_DEPTH + depLvl * DEPTH_UPGRADE_DELTA;
-      state.maxCapacityCount = INITIAL_CAPACITY + capLvl * CAPACITY_UPGRADE_DELTA;
+      state.maxCapacityCount = INITIAL_CAPACITY + capLvl * CAPACITY_UPGRADE_DELTA + (currentHookDef.capacityBonus || 0);
+      
+      const newHookTexture = hookTextureMap.get(hookId);
+      if (newHookTexture && hookSprite.texture !== newHookTexture) {
+         updateHookSprite(newHookTexture, hookId);
+      }
+      
       // Water body, channel and ground banks are sized from the target depth —
       // re-run the layout applicator so a deeper upgrade never out-swims them.
       layoutApplicator(activeLayout);
@@ -475,7 +556,9 @@ export async function createDockRuntime(
             const totalPayoutTime = goodFish.length * staggerDelay + fishAnimDuration + 0.15;
             if (payoutTimer >= totalPayoutTime && !state.resultFired) {
               state.resultFired = true;
-              const totalEarned = caughtFishList.reduce((s, f) => s + (f.kind.isBad ? 0 : f.kind.value), 0);
+              const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
+              
+              const totalEarned = caughtFishList.reduce((s, f) => s + (f.kind.isBad ? 0 : f.kind.value * currentHookDef.valueMultiplier), 0);
               const caughtTypes = caughtFishList.filter((f) => !f.kind.isBad).map((f) => f.kind.type);
 
               Promise.resolve(gameAudio.play("sell")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
@@ -544,8 +627,8 @@ export async function createDockRuntime(
           const rodTipWorldX = charNodes.boatRoot.x + charNodes.boatBob.x + localX * cosT - localY * sinT;
           const rodTipWorldY = charNodes.boatRoot.y + charNodes.boatBob.y + localX * sinT + localY * cosT;
 
-          const HOOK_EYELET_OFFSET_X = HOOK_ASSET_METADATA.eyeletOffsetX * HOOK_ASSET_METADATA.scale;
-          const HOOK_EYELET_OFFSET_Y = HOOK_ASSET_METADATA.eyeletOffsetY * HOOK_ASSET_METADATA.scale;
+          const HOOK_EYELET_OFFSET_X = currentHookMeta.eyeletOffsetX * currentHookMeta.scale;
+          const HOOK_EYELET_OFFSET_Y = currentHookMeta.eyeletOffsetY * currentHookMeta.scale;
 
           let currentCapturePointX = state.capturePointX;
           let currentCapturePointY = state.capturePointY;
@@ -592,7 +675,8 @@ export async function createDockRuntime(
 
           worldContainer.position.y = -state.cameraY;
 
-          const currentRunEarnings = caughtFishList.reduce((sum, f) => sum + (f.kind.isBad ? 0 : f.kind.value), 0);
+          const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
+          const currentRunEarnings = caughtFishList.reduce((sum, f) => sum + (f.kind.isBad ? 0 : f.kind.value * currentHookDef.valueMultiplier), 0);
           const stateChanged = state.fishingState !== lastReportedState;
           
           if (stateChanged && state.fishingState === "ascending") {
