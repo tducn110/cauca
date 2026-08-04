@@ -1,6 +1,6 @@
-import { Anchor, Sparkles, X, Coins } from "lucide-react";
+import { Sparkles, X, Coins } from "lucide-react";
 import { useState } from "react";
-import { HOOK_DEFINITIONS, getHookDefinition, getHookUnlockPrice, type HookDefinition } from "../game/hooks-data";
+import { HOOK_DEFINITIONS, getHookDefinition, getHookUnlockPrice } from "../game/hooks-data";
 import { loadSave, selectHook, unlockRandomHook } from "../game/storage";
 import { gameAudio } from "../../../audio/audioManager";
 import "./fishing-dock-screen.css";

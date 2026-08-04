@@ -9,6 +9,7 @@ import { buildAmbient, updateAmbient } from './ambientRenderer';
 import { buildCharacterNodes, updateCharacterAnimation } from './characterRenderer';
 import type { CharacterNodes } from './characterRenderer';
 import { createFishPool, updateFishPositions, destroyFishNodes } from './fishRenderer';
+import { calculateFishPayout } from './payoutMath';
 import { createCaptureController, tickCaptureState } from './captureController';
 import { FishingPowerGauge } from '../FishingPowerGauge';
 import { FISH_KINDS } from '../../game/fish-data';
@@ -68,12 +69,39 @@ export async function createDockRuntime(
   const app = new Application();
   let destroyed = false;
   let tickerAdded = false;
+  let removePointerMoveListener: (() => void) | null = null;
+  let cleanupSceneResources: (() => void) | null = null;
 
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+
     try {
-      if (app) app.destroy({ removeView: true }, { children: true, texture: false, textureSource: false });
+      removePointerMoveListener?.();
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "createDockRuntime",
+        operation: "removePointerMoveListener",
+        fatal: false,
+      });
+    } finally {
+      removePointerMoveListener = null;
+    }
+
+    try {
+      cleanupSceneResources?.();
+    } catch (error) {
+      reportRuntimeError(error, {
+        area: "createDockRuntime",
+        operation: "cleanupSceneResources",
+        fatal: false,
+      });
+    } finally {
+      cleanupSceneResources = null;
+    }
+
+    try {
+      app.destroy({ removeView: true }, { children: true, texture: false, textureSource: false });
     } catch (error) {
       reportRuntimeError(error, {
         area: "createDockRuntime",
@@ -405,13 +433,39 @@ export async function createDockRuntime(
       );
     };
     window.addEventListener("pointermove", handlePointerMoveListener);
-
-    const runtimeDestroy = () => {
+    removePointerMoveListener = () => {
       window.removeEventListener("pointermove", handlePointerMoveListener);
-      // Kill GSAP boat-float tweens before destroying the PixiJS scene.
-      charNodes.stopGsap?.();
-      destroy();
     };
+    cleanupSceneResources = () => {
+      try {
+        charNodes.stopGsap?.();
+      } catch (error) {
+        reportRuntimeError(error, {
+          area: "createDockRuntime",
+          operation: "stopCharacterAnimation",
+          fatal: false,
+        });
+      }
+
+      destroyFishNodes(activeFishList, caughtFishList, (error, operation) => {
+        reportRuntimeError(error, { area: "createDockRuntime", operation, fatal: false });
+      });
+      activeFishList = [];
+      caughtFishList = [];
+      destroyFloatingTexts();
+
+      try {
+        host.classList.remove("is-scene-ready", "is-gauge-disabled");
+      } catch (error) {
+        reportRuntimeError(error, {
+          area: "createDockRuntime",
+          operation: "removeHostClasses",
+          fatal: false,
+        });
+      }
+    };
+
+    const runtimeDestroy = destroy;
 
     let elapsed = 0;
     let stateReportElapsed = Number.POSITIVE_INFINITY;
@@ -454,11 +508,26 @@ export async function createDockRuntime(
                 recordDiscoveredFish([fish.kind.type]);
               }
               
-              if (fish.effectController) {
+              const effectController = fish.effectController;
+              if (effectController) {
                 try {
-                  fish.effectController.onCaught(fish);
-                } catch (err) {
-                  reportRuntimeError(err, { area: "specialEffects", operation: "onCaught", fatal: false });
+                  effectController.onCaught(fish);
+                } catch (error) {
+                  reportRuntimeError(error, {
+                    area: "specialEffects",
+                    operation: `onCaught:${fish.kind.type}#${fish.id}`,
+                    fatal: false,
+                  });
+                  fish.effectController = undefined;
+                  try {
+                    effectController.destroy();
+                  } catch (destroyError) {
+                    reportRuntimeError(destroyError, {
+                      area: "specialEffects",
+                      operation: `destroyAfterOnCaughtError:${fish.kind.type}#${fish.id}`,
+                      fatal: false,
+                    });
+                  }
                 }
               }
             },
@@ -496,6 +565,7 @@ export async function createDockRuntime(
             const staggerDelay = 0.08;
             const fishAnimDuration = 0.7;
 
+            const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
             const goodFish = caughtFishList.filter((f) => !f.kind.isBad);
 
             for (let i = 0; i < goodFish.length; i++) {
@@ -536,7 +606,7 @@ export async function createDockRuntime(
 
                     if (!(fish as any).textSpawned) {
                        (fish as any).textSpawned = true;
-                       spawnFloatingText(`+${fish.kind.value}đ`, "#3ae874", fish.x, fish.depthY - 15);
+                       spawnFloatingText(`+${calculateFishPayout(fish.kind, currentHookDef.valueMultiplier)}đ`, "#3ae874", fish.x, fish.depthY - 15);
                     }
                 } else {
                     fish.node.alpha = 1;
@@ -556,9 +626,7 @@ export async function createDockRuntime(
             const totalPayoutTime = goodFish.length * staggerDelay + fishAnimDuration + 0.15;
             if (payoutTimer >= totalPayoutTime && !state.resultFired) {
               state.resultFired = true;
-              const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
-              
-              const totalEarned = caughtFishList.reduce((s, f) => s + (f.kind.isBad ? 0 : f.kind.value * currentHookDef.valueMultiplier), 0);
+              const totalEarned = caughtFishList.reduce((sum, fish) => sum + calculateFishPayout(fish.kind, currentHookDef.valueMultiplier), 0);
               const caughtTypes = caughtFishList.filter((f) => !f.kind.isBad).map((f) => f.kind.type);
 
               Promise.resolve(gameAudio.play("sell")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
@@ -585,7 +653,19 @@ export async function createDockRuntime(
             }
           }
 
-          updateFishPositions(activeFishList, caughtFishList, state.capturePointX, state.capturePointY, { ...activeLayout, __fishingState: state.fishingState } as any, dt);
+          updateFishPositions(
+            activeFishList,
+            caughtFishList,
+            state.capturePointX,
+            state.capturePointY,
+            { ...activeLayout, __fishingState: state.fishingState },
+            dt,
+            (error, operation) => reportRuntimeError(error, {
+              area: "specialEffects",
+              operation,
+              fatal: false,
+            }),
+          );
 
           for (let i = floatingTextList.length - 1; i >= 0; i--) {
             const item = floatingTextList[i];
@@ -676,7 +756,7 @@ export async function createDockRuntime(
           worldContainer.position.y = -state.cameraY;
 
           const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
-          const currentRunEarnings = caughtFishList.reduce((sum, f) => sum + (f.kind.isBad ? 0 : f.kind.value * currentHookDef.valueMultiplier), 0);
+          const currentRunEarnings = caughtFishList.reduce((sum, fish) => sum + calculateFishPayout(fish.kind, currentHookDef.valueMultiplier), 0);
           const stateChanged = state.fishingState !== lastReportedState;
           
           if (stateChanged && state.fishingState === "ascending") {

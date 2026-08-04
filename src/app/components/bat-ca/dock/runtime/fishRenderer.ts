@@ -1,5 +1,7 @@
 import { Graphics, Container } from 'pixi.js';
 import { createSpecialEffect } from './specialEffects';
+import type { SpecialEffectController } from './specialEffects';
+import { drawFishShape } from './fishShape';
 import type { FishKind } from '../../game/types';
 import type { ActiveFish } from './runtimeTypes';
 import type { DockViewportLayout } from '../dockLayout';
@@ -72,48 +74,7 @@ function nearestFishKinds(
     .map(({ kind }) => kind);
 }
 
-export function drawFishShape(target: Graphics, kind: FishKind, size: number): void {
-  target.clear();
-  if (kind.isBad) {
-    target.ellipse(0, 0, size, size * 0.6).fill(kind.color).stroke({ color: "#2a2418", width: 1.2 });
-    target.moveTo(-size * 0.4, -size * 0.2).lineTo(size * 0.4, -size * 0.5).stroke({ color: "#2a2418", width: 1.2 });
-    return;
-  }
-
-  if (kind.type === "tom") {
-    target.arc(0, 0, size, 0.2, Math.PI * 1.8).stroke({ color: "#2a2418", width: 1.2 });
-    target.ellipse(0, 0, size * 0.9, size * 0.55).fill(kind.color).stroke({ color: "#2a2418", width: 1.2 });
-    target.moveTo(size, -2).lineTo(size + 6, -6).moveTo(size, 2).lineTo(size + 6, 6).stroke({ color: "#2a2418", width: 1.2 });
-    return;
-  }
-
-  if (kind.type === "cua") {
-    target.ellipse(0, 0, size, size * 0.7).fill(kind.color).stroke({ color: "#2a2418", width: 1.2 });
-    target.moveTo(-size, 0).lineTo(-size - 6, -4).moveTo(size, 0).lineTo(size + 6, -4);
-    target.moveTo(-size * 0.6, size * 0.5).lineTo(-size * 0.6, size + 4);
-    target.moveTo(size * 0.6, size * 0.5).lineTo(size * 0.6, size + 4);
-    target.stroke({ color: "#2a2418", width: 1.2 });
-    return;
-  }
-
-  target
-    .moveTo(-size * 0.9, 0)
-    .lineTo(-size * 1.7, -size * 0.7)
-    .lineTo(-size * 1.7, size * 0.7)
-    .closePath()
-    .fill(kind.color)
-    .stroke({ color: "#2a2418", width: 1.2 });
-  target.ellipse(0, 0, size * 1.3, size * 0.75).fill(kind.color).stroke({ color: "#2a2418", width: 1.2 });
-  target
-    .moveTo(-size * 0.2, -size * 0.7)
-    .lineTo(size * 0.3, -size * 1.1)
-    .lineTo(size * 0.5, -size * 0.6)
-    .closePath()
-    .fill(kind.color)
-    .stroke({ color: "#2a2418", width: 1.2 });
-  target.circle(size * 0.7, -size * 0.1, size * 0.22).fill("#ffffff");
-  target.circle(size * 0.75, -size * 0.1, size * 0.1).fill("#2a2418");
-}
+export { drawFishShape } from './fishShape';
 
 export function createFishPool(options: {
   targetDepthMeters: number;
@@ -150,7 +111,7 @@ export function createFishPool(options: {
     drawFishShape(bodyGraphic, kind, kind.size);
     node.addChild(bodyGraphic);
 
-    let effectController = undefined;
+    let effectController: SpecialEffectController | undefined;
     if (kind.specialVisual) {
        effectController = createSpecialEffect(kind.specialVisual, node, bodyGraphic, kind);
     }
@@ -184,22 +145,34 @@ export function updateFishPositions(
   caughtFishList: ActiveFish[],
   capturePointX: number,
   capturePointY: number,
-  layout: DockViewportLayout,
-  dt: number
+  layout: DockViewportLayout & { __fishingState?: string },
+  dt: number,
+  reportError?: (error: unknown, operation: string) => void,
 ): void {
   const channelHalf = layout.channelWidth * 0.45;
   const minX = layout.gameplayAxisX - channelHalf;
   const maxX = layout.gameplayAxisX + channelHalf;
 
   for (const fish of activeFishList) {
-    if (fish.effectController) {
-      fish.effectController.update(dt, fish);
+    const controller = fish.effectController;
+    if (!controller) continue;
+
+    try {
+      controller.update(dt, fish);
+    } catch (error) {
+      reportError?.(error, `updateSpecialEffect:${fish.kind.type}#${fish.id}`);
+      fish.effectController = undefined;
+      try {
+        controller.destroy();
+      } catch (destroyError) {
+        reportError?.(destroyError, `destroyFaultySpecialEffect:${fish.kind.type}#${fish.id}`);
+      }
     }
   }
 
   for (const fish of activeFishList) {
     if (fish.isCaught) {
-      if ((layout as any).__fishingState !== "payout") {
+      if (layout.__fishingState !== "payout") {
         const index = caughtFishList.indexOf(fish);
         const slot = CAUGHT_SLOTS[Math.min(index, CAUGHT_SLOTS.length - 1)];
         const extraY = Math.floor(index / CAUGHT_SLOTS.length) * 45;
@@ -233,15 +206,23 @@ export function destroyFishNodes(
 ): void {
   const allFish = new Set([...activeFishList, ...caughtFishList]);
   for (const fish of allFish) {
-    try {
-      if (fish.effectController) {
-         fish.effectController.destroy();
+    const controller = fish.effectController;
+    fish.effectController = undefined;
+
+    if (controller) {
+      try {
+        controller.destroy();
+      } catch (error) {
+        reportError(error, `destroySpecialEffect:${fish.kind.type}#${fish.id}`);
       }
+    }
+
+    try {
       if (!fish.node.destroyed) {
         fish.node.destroy({ children: true });
       }
     } catch (error) {
-      reportError(error, "destroyFishNode");
+      reportError(error, `destroyFishNode:${fish.kind.type}#${fish.id}`);
     }
   }
 }

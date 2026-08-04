@@ -254,9 +254,9 @@ describe("responsive layout – boatAnchor sits on waterline", () => {
 });
 
 // ─────────────────────────────────────────────────────────
-// NO FISHING LINE OR HOOK OBJECTS
+// LINE AND HOOK OWNERSHIP
 // ─────────────────────────────────────────────────────────
-describe("no visual hook artifacts", () => {
+describe("line and hook ownership", () => {
   it("fishRenderer module exports do not include lineGraphics or hookGraphics", async () => {
     const mod = await import("./fishRenderer");
     expect(Object.keys(mod)).not.toContain("lineGraphics");
@@ -811,15 +811,5 @@ describe("payout phase constraints", () => {
       onResult();
     }
     expect(onResult).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('Integration visual isolation', () => {
-  it('does not interrupt catch bookkeeping if effect controller throws', () => {
-    // We will just verify the logic in createDockRuntime.ts by mocking
-    // Wait, testing createDockRuntime directly requires mocking the PIXI layout deeply.
-    // Instead we can just do a minimal layout and call tickCaptureState to ensure it passes callbacks safely.
-    // Actually, createDockRuntime defines the callback, but I can test the onFishCaught callback directly if I could extract it.
-    // Since it's inside createDockRuntime, let's write a small unit test here to ensure tickCaptureState doesn't crash if callback throws? No, createDockRuntime catches it.
   });
 });

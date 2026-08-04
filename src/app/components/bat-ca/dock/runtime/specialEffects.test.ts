@@ -1,94 +1,108 @@
-import { describe, it, expect, vi } from 'vitest';
-import { Container, Graphics } from 'pixi.js';
-import { createSpecialEffect } from './specialEffects';
-import { FishKind, SpecialVisual } from '../../game/types';
-import { ActiveFish } from './runtimeTypes';
+import { describe, expect, it } from "vitest";
+import { Container, Graphics } from "pixi.js";
+import type { FishKind, SpecialVisual } from "../../game/types";
+import type { ActiveFish } from "./runtimeTypes";
+import { createSpecialEffect } from "./specialEffects";
 
-// Mock audio to prevent error during testing
-vi.mock('../../../../audio/audioManager', () => ({
-  gameAudio: {
-    play: vi.fn(),
-  }
-}));
+const specialKind: FishKind = {
+  type: "hoangkim",
+  name: "Golden",
+  value: 100,
+  weight: 1,
+  depthMin: 0,
+  depthMax: 100,
+  speed: 1,
+  size: 10,
+  rarity: 1,
+  isBad: false,
+  behavior: "golden",
+  color: "#000000",
+  belly: "#ffffff",
+  specialVisual: "golden",
+};
 
-describe('specialEffects', () => {
-  const createMockFish = (kind: FishKind): ActiveFish => {
-    const node = new Container();
-    const bodyGraphic = new Graphics();
-    node.addChild(bodyGraphic);
-    return {
-      id: 0, x: 0,
-      depthY: 100,
-      vx: 1,
-      size: 10,
-      node,
-      bodyGraphic,
-      isCaught: false,
-      kind
-    };
+function createMockFish(kind: FishKind, bodyGraphic = new Graphics()): ActiveFish {
+  const node = new Container();
+  node.addChild(bodyGraphic);
+  return {
+    id: 1,
+    x: 0,
+    depthY: 100,
+    vx: 1,
+    size: 10,
+    node,
+    bodyGraphic,
+    isCaught: false,
+    kind,
   };
+}
 
-  const goldenKind: FishKind = { type: 'hoangkim', name: 'Golden', value: 100, weight: 1, depthMin: 0, depthMax: 100, speed: 1, size: 10, rarity: 1, isBad: false, behavior: 'golden', color: '#000', belly: '#fff', specialVisual: 'golden' };
-  const normalKind: FishKind = { type: 'normal', name: 'Normal', value: 10, weight: 1, depthMin: 0, depthMax: 100, speed: 1, size: 10, rarity: 1, isBad: false, behavior: 'normal', color: '#000', belly: '#fff' };
-
-  it('creates controller for special fish', () => {
+describe("specialEffects", () => {
+  it("returns an idempotent no-op controller for an unknown visual", () => {
     const parent = new Container();
     const bodyGraphic = new Graphics();
-    const controller = createSpecialEffect('golden', parent, bodyGraphic, goldenKind);
-    expect(controller).toBeDefined();
-    expect(parent.children.length).toBeGreaterThan(0);
+    const controller = createSpecialEffect(
+      "unknown" as SpecialVisual,
+      parent,
+      bodyGraphic,
+      specialKind,
+    );
+
+    expect(parent.children).toHaveLength(0);
+    expect(() => {
+      controller.destroy();
+      controller.destroy();
+      controller.update(0.16, createMockFish(specialKind));
+      controller.onCaught(createMockFish(specialKind));
+    }).not.toThrow();
   });
 
-  it('creates empty controller for normal fish (default fallback)', () => {
-    const parent = new Container();
-    const bodyGraphic = new Graphics();
-    const controller = createSpecialEffect('unknown' as SpecialVisual, parent, bodyGraphic, normalKind);
-    expect(controller).toBeDefined();
-    expect(parent.children.length).toBe(0);
-  });
+  for (const visual of ["golden", "electric", "ghost", "rainbow"] as const) {
+    it(`${visual} keeps its display-object count bounded`, () => {
+      const parent = new Container();
+      const bodyGraphic = new Graphics();
+      const fish = createMockFish(specialKind, bodyGraphic);
+      const controller = createSpecialEffect(visual, parent, bodyGraphic, specialKind);
+      const initialChildren = [...parent.children];
 
-  it('bounds child count on repeated updates', () => {
-    const parent = new Container();
-    const bodyGraphic = new Graphics();
-    const controller = createSpecialEffect('electric', parent, bodyGraphic, goldenKind);
-    const initialChildren = parent.children.length;
-    
-    const fish = createMockFish(goldenKind);
-    for (let i = 0; i < 10; i++) {
-      controller.update(0.16, fish);
-    }
-    
-    expect(parent.children.length).toBe(initialChildren);
-  });
+      for (let i = 0; i < 1_000; i += 1) {
+        controller.update(0.016, fish);
+      }
+      controller.onCaught(fish);
+      controller.onCaught(fish);
+      for (let i = 0; i < 100; i += 1) {
+        controller.update(0.016, fish);
+      }
 
-  it('triggers onCaught exactly once and bounds child count', () => {
-    const parent = new Container();
-    const bodyGraphic = new Graphics();
-    const controller = createSpecialEffect('ghost', parent, bodyGraphic, goldenKind);
-    const initialChildren = parent.children.length;
-    
-    const fish = createMockFish(goldenKind);
-    
-    controller.onCaught(fish);
-    expect(parent.children.length).toBe(initialChildren);
-    const afterCaughtChildren = parent.children.length;
-    
-    // Call again, shouldn't increase child count further
-    controller.onCaught(fish);
-    expect(parent.children.length).toBe(afterCaughtChildren);
-  });
+      expect(parent.children).toHaveLength(initialChildren.length);
+      expect(parent.children).toEqual(initialChildren);
+    });
 
-  it('cleans up idempotently without throwing', () => {
-    const parent = new Container();
-    const bodyGraphic = new Graphics();
-    const controller = createSpecialEffect('rainbow', parent, bodyGraphic, goldenKind);
-    
-    // Should not throw
-    controller.destroy();
-    controller.destroy();
-    
-    // update and onCaught after destroy should not throw
-    controller.update(0.16, createMockFish(goldenKind));
-    controller.onCaught(createMockFish(goldenKind));
-  });
+    it(`${visual} destroys owned nodes and ignores later calls`, () => {
+      const parent = new Container();
+      const bodyGraphic = new Graphics();
+      const fish = createMockFish(specialKind, bodyGraphic);
+      const controller = createSpecialEffect(visual, parent, bodyGraphic, specialKind);
+      const ownedChildren = [...parent.children];
+
+      controller.onCaught(fish);
+      controller.update(0.1, fish);
+      controller.destroy();
+      controller.destroy();
+
+      expect(ownedChildren.every((child) => child.destroyed)).toBe(true);
+      expect(parent.children).toHaveLength(0);
+      expect(bodyGraphic.position.x).toBe(0);
+      expect(bodyGraphic.position.y).toBe(0);
+      expect(bodyGraphic.scale.x).toBe(1);
+      expect(bodyGraphic.scale.y).toBe(1);
+      expect(bodyGraphic.alpha).toBe(1);
+
+      expect(() => {
+        controller.update(0.16, fish);
+        controller.onCaught(fish);
+      }).not.toThrow();
+      expect(parent.children).toHaveLength(0);
+    });
+  }
 });
