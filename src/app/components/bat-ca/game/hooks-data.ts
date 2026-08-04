@@ -10,6 +10,10 @@ export interface HookDefinition {
   color: string;
   accentColor: string;
   rarity: "common" | "rare" | "epic" | "legendary";
+  capacityBonus?: number;
+  offlineTimeBonusHours?: number;
+  offlineRateMultiplier?: number;
+  image: string;
 }
 
 export const HOOK_DEFINITIONS: HookDefinition[] = [
@@ -25,62 +29,95 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#cbd5e1",
     accentColor: "#64748b",
     rarity: "common",
+    image: "/hook.png",
   },
   {
-    id: "silver",
-    name: "Lưỡi Thép Bạc",
-    nameEn: "Silver Steel Hook",
-    desc: "Sắc bén hơn, tăng 10% giá trị cá đánh bắt.",
-    descEn: "Sharper hook, +10% fish catch value.",
-    price: 150,
-    valueMultiplier: 1.1,
-    speedMultiplier: 1.0,
-    color: "#94a3b8",
-    accentColor: "#475569",
+    id: "fast",
+    name: "Lưỡi Siêu Tốc",
+    nameEn: "Super Fast Hook",
+    desc: "Thiết kế khí động học, tăng 50% tốc độ kéo.",
+    descEn: "Aerodynamic design, +50% pull speed.",
+    price: 600,
+    valueMultiplier: 1.0,
+    speedMultiplier: 1.5,
+    color: "#3b82f6",
+    accentColor: "#1d4ed8",
     rarity: "rare",
+    image: "/hooks/hooksfast.png",
   },
   {
-    id: "gold",
-    name: "Lưỡi Vàng Hoàng Gia",
-    nameEn: "Royal Gold Hook",
-    desc: "Mạ vàng nguyên chất, tăng 25% giá trị cá.",
-    descEn: "Pure gold plated, +25% fish value.",
-    price: 400,
-    valueMultiplier: 1.25,
-    speedMultiplier: 1.05,
+    id: "plus2",
+    name: "Lưỡi Cú Đúp",
+    nameEn: "Double Catch Hook",
+    desc: "Lưỡi câu đôi, bắt thêm 2 con cá mỗi lần thả.",
+    descEn: "Double hook, catch +2 fish per cast.",
+    price: 1000,
+    valueMultiplier: 1.0,
+    speedMultiplier: 1.0,
+    capacityBonus: 2,
+    color: "#10b981",
+    accentColor: "#047857",
+    rarity: "epic",
+    image: "/hooks/hookplus2fish.png",
+  },
+  {
+    id: "lucky_gold",
+    name: "Lưỡi Vàng Tài Lộc",
+    nameEn: "Lucky Gold Hook",
+    desc: "Đúc từ vàng khối ròng, tăng 50% giá trị cá bán được.",
+    descEn: "Solid gold, +50% fish value.",
+    price: 2000,
+    valueMultiplier: 1.5,
+    speedMultiplier: 1.0,
     color: "#f59e0b",
     accentColor: "#b45309",
-    rarity: "epic",
-  },
-  {
-    id: "magnet",
-    name: "Lưỡi Nam Châm",
-    nameEn: "Magnet Hook",
-    desc: "Hút cá nhanh hơn, tăng 20% tốc độ kéo.",
-    descEn: "Attracts fish faster, +20% pull speed.",
-    price: 800,
-    valueMultiplier: 1.15,
-    speedMultiplier: 1.2,
-    color: "#ef4444",
-    accentColor: "#991b1b",
-    rarity: "epic",
-  },
-  {
-    id: "cyber",
-    name: "Lưỡi Neon Cyber",
-    nameEn: "Cyber Neon Hook",
-    desc: "Công nghệ tương lai, tăng 50% giá trị cá.",
-    descEn: "Futuristic tech, +50% fish catch value.",
-    price: 1500,
-    valueMultiplier: 1.5,
-    speedMultiplier: 1.15,
-    color: "#06b6d4",
-    accentColor: "#0e7490",
     rarity: "legendary",
+    image: "/hooks/hookplusgold.png",
+  },
+  {
+    id: "coin",
+    name: "Lưỡi Tiền Tệ",
+    nameEn: "Coin Hook",
+    desc: "Thu hút đồng xu ngay cả khi bạn không có mặt. Tăng 50% tiền treo máy.",
+    descEn: "Attracts coins while you're away. +50% AFK money.",
+    price: 3000,
+    valueMultiplier: 1.0,
+    speedMultiplier: 1.0,
+    offlineRateMultiplier: 1.5,
+    color: "#eab308",
+    accentColor: "#a16207",
+    rarity: "legendary",
+    image: "/hooks/hookcoin.png",
+  },
+  {
+    id: "times",
+    name: "Lưỡi Thời Gian",
+    nameEn: "Time Hook",
+    desc: "Bẻ cong thời gian, tăng giới hạn treo máy nhận tiền thêm 4 giờ.",
+    descEn: "Bends time, adds 4 hours to AFK limit.",
+    price: 3000,
+    valueMultiplier: 1.0,
+    speedMultiplier: 1.0,
+    offlineTimeBonusHours: 4,
+    color: "#6366f1",
+    accentColor: "#4338ca",
+    rarity: "legendary",
+    image: "/hooks/hooktimes.png",
   },
 ];
 
-export const RANDOM_HOOK_UNLOCK_PRICE = 200;
+export const HOOK_UNLOCK_PRICES = [
+  0,        // 1st (default)
+  5000,     // 2nd
+  25000,    // 3rd
+  75000,    // 4th
+  250000,   // 5th
+  1000000,  // 6th
+];
+
+export function getHookUnlockPrice(unlockedCount: number): number {
+  return HOOK_UNLOCK_PRICES[unlockedCount] || 1000000;
+}
 
 export function getHookDefinition(id: string): HookDefinition {
   return HOOK_DEFINITIONS.find((h) => h.id === id) ?? HOOK_DEFINITIONS[0];

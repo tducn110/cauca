@@ -74,7 +74,7 @@ export function AquariumPanel({ onClose }: Props) {
         </div>
 
         {/* Fish Grid */}
-        <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto">
+        <div className="p-5 grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto flex-1 min-h-0">
           {FISH_KINDS.map((fish) => {
             const isDiscovered = discoveredSet.has(fish.type);
             const badge = getRarityBadge(fish.rarity, fish.isBad);

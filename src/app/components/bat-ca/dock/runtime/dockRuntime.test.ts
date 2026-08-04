@@ -552,7 +552,8 @@ describe("regression: texture lifecycle in Strict Mode", () => {
       catchCompleteRef: { current: vi.fn() },
       stateChangeRef: { current: vi.fn() },
       capacityLevelRef: { current: 1 },
-      depthLevelRef: { current: 1 }
+      depthLevelRef: { current: 1 },
+      selectedHookIdRef: { current: "classic" }
     };
     
     const onFail = vi.fn((err, op) => console.error(op, err));
@@ -608,6 +609,7 @@ describe("hook asset registration and Sprite load", () => {
       stateChangeRef: { current: vi.fn() },
       capacityLevelRef: { current: 0 },
       depthLevelRef: { current: 0 },
+      selectedHookIdRef: { current: "classic" }
     };
 
     const onFail = vi.fn();
@@ -745,6 +747,7 @@ describe("asset registry and geometry", () => {
       stateChangeRef: { current: vi.fn() },
       capacityLevelRef: { current: 0 },
       depthLevelRef: { current: 0 },
+      selectedHookIdRef: { current: "classic" }
     };
     
     const onFail = vi.fn();

@@ -1,3 +1,4 @@
+import { getHookDefinition } from "../game/hooks-data";
 import { loadSave, saveProgress, type SaveData } from "../game/storage";
 import {
   MAX_OFFLINE_ELAPSED_MS,
@@ -36,6 +37,7 @@ export type DockProgressionSnapshot = {
   nextGiftAt: number;
   giftAvailable: boolean;
   giftRemainingMs: number;
+  selectedHook: string;
 };
 
 export type OfflineClaimResult = {
@@ -108,6 +110,7 @@ export function getDockProgression(now = Date.now(), save = loadSave()): DockPro
     nextGiftAt: save.nextGiftAt,
     giftAvailable: giftRemainingMs === 0,
     giftRemainingMs,
+    selectedHook: save.selectedHook,
   };
 }
 
@@ -125,8 +128,15 @@ export function claimOfflineEarnings(now = Date.now()): OfflineClaimResult {
     return { claimed: false, amount: 0, elapsedMs: rawElapsedMs, capped: false, save };
   }
 
-  const elapsedMs = Math.min(rawElapsedMs, MAX_OFFLINE_ELAPSED_MS);
-  const rate = OFFLINE_RATE_PER_MINUTE[save.offlineRateLevel];
+  const hookDef = getHookDefinition(save.selectedHook);
+  const maxMs = MAX_OFFLINE_ELAPSED_MS + (hookDef.offlineTimeBonusHours || 0) * 60 * 60 * 1000;
+  const elapsedMs = Math.min(rawElapsedMs, maxMs);
+  
+  let rate = OFFLINE_RATE_PER_MINUTE[save.offlineRateLevel];
+  if (hookDef.offlineRateMultiplier) {
+    rate *= hookDef.offlineRateMultiplier;
+  }
+  
   const calculatedAmount = Math.floor(elapsedMs / 60_000) * rate;
   const wallet = addToWallet(save, calculatedAmount);
   const amount = wallet.money - save.money;
@@ -136,7 +146,7 @@ export function claimOfflineEarnings(now = Date.now()): OfflineClaimResult {
     claimed: amount > 0,
     amount,
     elapsedMs,
-    capped: rawElapsedMs > MAX_OFFLINE_ELAPSED_MS,
+    capped: rawElapsedMs > maxMs,
     save: persistedSave(),
   };
 }
