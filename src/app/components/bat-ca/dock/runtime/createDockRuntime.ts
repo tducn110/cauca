@@ -502,9 +502,10 @@ export async function createDockRuntime(
             onFishCaught: (fish) => {
               caughtFishList.push(fish);
               if (fish.kind.isBad) {
-                Promise.resolve(gameAudio.play("fail")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
+                gameAudio.play("fail");
                 spawnFloatingText(`${fish.kind.name}`, "#e84a4a", fish.x, fish.depthY);
               } else {
+                gameAudio.play("catch");
                 recordDiscoveredFish([fish.kind.type]);
               }
               
@@ -579,7 +580,7 @@ export async function createDockRuntime(
                   fish.vx = (Math.random() - 0.5) * 150;
                   fish.depthY = activeLayout.waterlineY - 10;
                   fish.node.position.set(fish.x, fish.depthY);
-                  Promise.resolve(gameAudio.play("buy")).catch(() => {});
+                  gameAudio.play("buy");
                 }
                 
                 const progress = Math.min(1, fishAge / fishAnimDuration);
@@ -629,7 +630,7 @@ export async function createDockRuntime(
               const totalEarned = caughtFishList.reduce((sum, fish) => sum + calculateFishPayout(fish.kind, currentHookDef.valueMultiplier), 0);
               const caughtTypes = caughtFishList.filter((f) => !f.kind.isBad).map((f) => f.kind.type);
 
-              Promise.resolve(gameAudio.play("sell")).catch(err => reportRuntimeError(err, { area: "createDockRuntime", operation: "playAudio", fatal: false }));
+              gameAudio.play("sell");
 
               if (totalEarned > 0) {
                 spawnFloatingText(`+${totalEarned.toLocaleString("vi-VN")}đ`, "#ffe32a", activeLayout.gameplayAxisX, activeLayout.waterlineY - 40);
@@ -759,10 +760,6 @@ export async function createDockRuntime(
           const currentRunEarnings = caughtFishList.reduce((sum, fish) => sum + calculateFishPayout(fish.kind, currentHookDef.valueMultiplier), 0);
           const stateChanged = state.fishingState !== lastReportedState;
           
-          if (stateChanged && state.fishingState === "ascending") {
-            Promise.resolve(gameAudio.play("level")).catch(() => {});
-          }
-
           const catchChanged = caughtFishList.length !== lastReportedCaughtCount;
           const earningsChanged = currentRunEarnings !== lastReportedRunEarnings;
 

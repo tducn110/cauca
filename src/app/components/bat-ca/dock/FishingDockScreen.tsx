@@ -217,7 +217,10 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const lockPower = (result: PowerLockResult) => {
     if (phase !== "dock" || panel !== null || showOfflineModal) return;
     setLaunchResult(result);
-    gameAudio.play(result.label === "MAX" ? "level" : "click");
+    // Keep both calls inside the trusted pointer event for iOS Safari.
+    gameAudio.play("click");
+    gameAudio.play("cast");
+    if (result.label === "MAX") gameAudio.play("level");
     if (launchTimerRef.current !== null) window.clearTimeout(launchTimerRef.current);
     launchTimerRef.current = window.setTimeout(() => {
       launchTimerRef.current = null;

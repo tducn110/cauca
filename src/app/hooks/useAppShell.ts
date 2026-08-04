@@ -29,6 +29,11 @@ export function useAppShell() {
   const [endGameData, setEndGameData] = useState<EndGameData | null>(null);
 
   useEffect(() => {
+    const save = loadSave();
+    gameAudio.syncPreferences({
+      muted: !save.audioSettings.sound,
+      musicEnabled: save.audioSettings.music,
+    });
     const cleanupAudio = installAudioLifecycle();
     let current = 0;
     const interval = setInterval(() => {

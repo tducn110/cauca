@@ -23,6 +23,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
   const handleToggleMusic = () => {
     gameAudio.play("click");
     const nextMusic = !save.audioSettings.music;
+    gameAudio.setMusicEnabled(nextMusic);
     saveProgress({ audioSettings: { ...save.audioSettings, music: nextMusic } });
     setSave((s) => ({ ...s, audioSettings: { ...s.audioSettings, music: nextMusic } }));
   };
@@ -107,4 +108,3 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
     </div>
   );
 }
-
