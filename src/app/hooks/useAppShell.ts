@@ -3,6 +3,7 @@ import type { EndGameData } from "../components/bat-ca/hooks/useBatCaGame";
 import { loadSave, saveRunResult } from "../components/bat-ca/game/storage";
 import { recordDockActivity } from "../components/bat-ca/dock/progression";
 import { gameAudio, installAudioLifecycle } from "../audio/audioManager";
+import { winkGame } from "../../integrations/wink/client";
 
 const ACTIVITY_HEARTBEAT_MS = 30_000;
 
@@ -35,6 +36,13 @@ export function useAppShell() {
       musicEnabled: save.audioSettings.music,
     });
     const cleanupAudio = installAudioLifecycle();
+    const cleanupWink = winkGame.bindLifecycle({
+      onMute: () => setMutedState(true),
+      onUnmute: () => setMutedState(false),
+      onPause: () => { gameAudio.setPageHidden(true); },
+      onResume: () => { gameAudio.setPageHidden(false); }
+    });
+    
     let current = 0;
     const interval = setInterval(() => {
       current += 10;
@@ -46,6 +54,7 @@ export function useAppShell() {
       setLoadingProgress(current);
     }, 100);
     return () => {
+      cleanupWink();
       cleanupAudio();
       clearInterval(interval);
     };

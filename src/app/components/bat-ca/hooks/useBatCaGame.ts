@@ -5,6 +5,7 @@ import { UPGRADE_DEFS, upgradeCost } from "../engine";
 import { ROUND_FEEDBACK_DURATION_MS } from "../game/constants";
 import { gameAudio } from "../../../audio/audioManager";
 import { recordDiscoveredFish } from "../game/storage";
+import { winkGame, type WinkRound } from "../../../../integrations/wink/client";
 
 export type EndReason = "target-not-reached" | "time-out" | "quit" | "completed";
 
@@ -66,6 +67,9 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
   const resultTimerRef = useRef<number | null>(null);
   const onEndGameRef = useRef(onEndGame);
 
+  const activeRoundRef = useRef<WinkRound | null>(null);
+  const finalizingRef = useRef(false);
+
   useEffect(() => {
     onEndGameRef.current = onEndGame;
   }, [onEndGame]);
@@ -90,10 +94,39 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
     setMode(next);
   }, [game]);
 
-  const finishRun = useCallback((reason: EndReason, snapshot = runStateRef.current) => {
+  const finishRun = useCallback(async (reason: EndReason, snapshot = runStateRef.current) => {
     if (endedRef.current) return;
     endedRef.current = true;
     clearResultTimer();
+
+    const round = activeRoundRef.current;
+    if (round && !finalizingRef.current) {
+      finalizingRef.current = true;
+      try {
+        const finalScore = snapshot.totalScore + snapshot.levelScore;
+        const playTimeMs = Date.now() - round.startedAtMs;
+        const playTimeSec = Math.round(playTimeMs / 1000);
+
+        if (winkGame.canSubmitScore) {
+          try {
+            await winkGame.submitFinalScore({
+              score: finalScore,
+              playTime: playTimeSec,
+            });
+          } catch (e: any) {
+            if (e?.code !== "CAPABILITY_DENIED") {
+              console.error("[Wink] Failed to submit score:", e);
+            }
+          }
+        }
+        
+        winkGame.completeRound(round, { playDurationMs: playTimeMs });
+      } finally {
+        activeRoundRef.current = null;
+        finalizingRef.current = false;
+      }
+    }
+
     onEndGameRef.current?.(endGameData(snapshot, reason));
   }, [clearResultTimer]);
 
@@ -177,6 +210,7 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
     setLastFeedback(null);
     setGameMode("playing");
     gameAudio.play("click");
+    activeRoundRef.current = winkGame.startRound();
   }, [clearResultTimer, commitRunState, game, setGameMode]);
 
   const startNextLevel = useCallback(() => {
@@ -198,6 +232,7 @@ export function useBatCaGame(onEndGame?: (data: EndGameData) => void, initialCas
     setLastFeedback(null);
     setGameMode("playing");
     gameAudio.play("click");
+    activeRoundRef.current = winkGame.startRound();
   }, [commitRunState, game, setGameMode]);
 
   const endGame = useCallback(() => {
