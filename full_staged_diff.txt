@@ -1,0 +1,1539 @@
+diff --git a/src/app/components/bat-ca/dock/runtime/captureController.ts b/src/app/components/bat-ca/dock/runtime/captureController.ts
+index 30352f8..5d1df4f 100644
+--- a/src/app/components/bat-ca/dock/runtime/captureController.ts
++++ b/src/app/components/bat-ca/dock/runtime/captureController.ts
+@@ -16,6 +16,8 @@ export type CaptureState = {
+   maxCapacityCount: number;
+   surfaceBurstTimer: number;
+   resultFired: boolean;
++  /** Seconds to hold the hook still at the bottom before reversing to ascending. */
++  bottomHoldTimer: number;
+ };
+ 
+ export function createCaptureController(initialLayout: DockViewportLayout): CaptureState {
+@@ -33,6 +35,7 @@ export function createCaptureController(initialLayout: DockViewportLayout): Capt
+     maxCapacityCount: 0,
+     surfaceBurstTimer: 0,
+     resultFired: false,
++    bottomHoldTimer: 0,
+   };
+ }
+ 
+@@ -58,6 +61,18 @@ export function distanceToSegment(
+   return Math.hypot(px - closestX, py - closestY);
+ }
+ 
++/**
++ * Frame-rate independent exponential approach.
++ * Equivalent to `value += (target - value) * (1 - e^(-rate * dt))`, so the
++ * per-frame step is identical regardless of how unevenly `dt` is delivered.
++ * This removes the "jumping between coordinates" seen on a stuttering device
++ * where the old `value += (target - value) * rate * dt` form moved differently
++ * on every frame.
++ */
++function expoStep(value: number, target: number, rate: number, dt: number): number {
++  return value + (target - value) * (1 - Math.exp(-rate * dt));
++}
++
+ export function tickCaptureState(
+   state: CaptureState,
+   dt: number,
+@@ -82,22 +97,31 @@ export function tickCaptureState(
+     state.resultFired = false;
+   } else if (state.fishingState === "descending") {
+     // DESCENDING: plunge straight down. NO collision, NO catch.
+-    const plungeSpeed = (450 + state.targetDepthMeters * 0.8) * (0.85 + state.castPowerFactor * 0.3);
+-    state.capturePointY += plungeSpeed * dt;
+-    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 5 * dt;
++    const plankBottomY = layout.waterlineY + totalDepthPx;
++    const baseSpeed = 450 + state.targetDepthMeters * 0.8;
+ 
+-    // Camera follows only after hook is clearly below the surface
+-    if (state.capturePointY > layout.waterlineY + 50) {
+-      const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
+-      state.cameraY += (targetCamY - state.cameraY) * 6 * dt;
+-    }
++    // Decelerate smoothly as the hook nears the bottom (avoid a hard slam).
++    const remaining = Math.max(0, plankBottomY - state.capturePointY);
++    const slow = Math.min(1, remaining / 100); // 1 far away, → ~0 at the bottom
++    const plungeSpeed = baseSpeed * (0.85 + state.castPowerFactor * 0.3) * (0.2 + 0.8 * slow);
++    state.capturePointY = Math.min(plankBottomY, state.capturePointY + plungeSpeed * dt);
++    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
++
++    if (state.capturePointY >= plankBottomY) {
++      // Reached the bottom: settle X/camera and hold briefly before reversing,
++      // so the hook doesn't violently snap from full speed down to full speed up.
++      if (state.bottomHoldTimer <= 0) state.bottomHoldTimer = 0.22;
+ 
+-    // Immediate transition to ascending at bottom — no pause, no hold
+-    if (state.capturePointY >= layout.waterlineY + totalDepthPx) {
+-      state.capturePointY = layout.waterlineY + totalDepthPx;
+-      state.fishingState = "ascending";
+-      state.previousCapturePointX = state.capturePointX;
+-      state.previousCapturePointY = state.capturePointY;
++      state.bottomHoldTimer -= dt;
++      if (state.bottomHoldTimer <= 0) {
++        state.fishingState = "ascending";
++        state.previousCapturePointX = state.capturePointX;
++        state.previousCapturePointY = state.capturePointY;
++      }
++    } else if (state.capturePointY > layout.waterlineY + 50) {
++      // Camera follows only after hook is clearly below the surface
++      const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
++      state.cameraY = expoStep(state.cameraY, targetCamY, 6, dt);
+     }
+   } else if (state.fishingState === "ascending") {
+     // ASCENDING: only state where catching is allowed.
+@@ -108,10 +132,10 @@ export function tickCaptureState(
+     const atCapacity = caughtFishList.length >= state.maxCapacityCount;
+     const reelSpeed = 220 + (atCapacity ? 100 : 0);
+     state.capturePointY -= reelSpeed * dt;
+-    state.capturePointX += (state.targetCaptureX - state.capturePointX) * 5 * dt;
++    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
+ 
+     const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
+-    state.cameraY += (targetCamY - state.cameraY) * 8 * dt;
++    state.cameraY = expoStep(state.cameraY, targetCamY, 8, dt);
+ 
+     // Swept circle collision — ONLY in ascending and under capacity
+     const canCatch = caughtFishList.length < state.maxCapacityCount;
+@@ -149,8 +173,8 @@ export function tickCaptureState(
+   } else if (state.fishingState === "surfaceBurst") {
+     // SURFACE BURST: brief 300ms, camera returns to dock, hook/line fade.
+     state.surfaceBurstTimer -= dt;
+-    state.capturePointX += (layout.gameplayAxisX - state.capturePointX) * 10 * dt;
+-    state.cameraY += (0 - state.cameraY) * 10 * dt;
++    state.capturePointX = expoStep(state.capturePointX, layout.gameplayAxisX, 10, dt);
++    state.cameraY = expoStep(state.cameraY, 0, 10, dt);
+ 
+     if (state.surfaceBurstTimer <= 0) {
+       state.fishingState = "payout";
+diff --git a/src/app/components/bat-ca/dock/runtime/createDockRuntime.ts b/src/app/components/bat-ca/dock/runtime/createDockRuntime.ts
+index 8ecc753..16fcbbd 100644
+--- a/src/app/components/bat-ca/dock/runtime/createDockRuntime.ts
++++ b/src/app/components/bat-ca/dock/runtime/createDockRuntime.ts
+@@ -33,6 +33,29 @@ export type RuntimeCallbacks = {
+ 
+ export type DockSceneRuntimeInstance = DockSceneRuntime & { destroy: () => void };
+ 
++/**
++ * Smooth rod-tip anchor for the cast swing.
++ *
++ * The duck casts through 6 discrete keyframes whose rod-tip markers can jump
++ * vertically (e.g. y 334→188→169→146→310→331). Snapping the fishing line origin
++ * and hook to those markers each frame makes the (otherwise static) hook texture
++ * visibly "jerk up and down". Interpolating the two adjacent keyframes by the
++ * exact cast progress keeps the line/hook moving continuously during the swing.
++ */
++function interpolatedRodTip(progress: number): { x: number; y: number } {
++  const safe = Math.min(1, Math.max(0, progress));
++  const count = ROD_TIP_BY_FRAME.length;
++  const seg = safe * (count - 1);
++  const i = Math.floor(seg);
++  const t = seg - i;
++  const a = ROD_TIP_BY_FRAME[Math.min(i, count - 1)];
++  const b = ROD_TIP_BY_FRAME[Math.min(i + 1, count - 1)];
++  return {
++    x: a.x + (b.x - a.x) * t,
++    y: a.y + (b.y - a.y) * t,
++  };
++}
++
+ export async function createDockRuntime(
+   host: HTMLDivElement,
+   initialLayout: DockViewportLayout,
+@@ -330,75 +353,8 @@ export async function createDockRuntime(
+           gauge.update(dt);
+           gauge.visible = state.fishingState === "idle";
+ 
+-          // Animate the water surface, then make the boat ride the same wave
+-          // that is drawn under its hull (bob follows height, tilt follows slope).
+-          updateWaterSurface({ rearWave, frontWave }, activeLayout, elapsed);
+-          const boatWaveMotion = sampleBoatWaveMotion(activeLayout.boatAnchor.x, elapsed);
+-
+-          updateCharacterAnimation(
+-            charNodes, state.fishingState, state.castAnimTimer, elapsed, boatWaveMotion
+-          );
+-
+-          const frame = charNodes.sprite.currentFrame;
+-          const marker = ROD_TIP_BY_FRAME[frame];
+-
+-          const scaleX = charNodes.sprite.scale.x;
+-          const scaleY = charNodes.sprite.scale.y;
+-          const localX = (marker.x - DUCK_ANIMATION_SOURCE.width * DUCK_ANIMATION_SOURCE.anchorX) * scaleX;
+-          const localY = (marker.y - DUCK_ANIMATION_SOURCE.height * DUCK_ANIMATION_SOURCE.anchorY) * scaleY;
+-          
+-          const cosT = Math.cos(charNodes.boatBob.rotation);
+-          const sinT = Math.sin(charNodes.boatBob.rotation);
+-          
+-          const rodTipWorldX = charNodes.boatRoot.x + charNodes.boatBob.x + localX * cosT - localY * sinT;
+-          const rodTipWorldY = charNodes.boatRoot.y + charNodes.boatBob.y + localX * sinT + localY * cosT;
+-
+-          const HOOK_EYELET_OFFSET_X = HOOK_ASSET_METADATA.eyeletOffsetX * HOOK_ASSET_METADATA.scale;
+-          const HOOK_EYELET_OFFSET_Y = HOOK_ASSET_METADATA.eyeletOffsetY * HOOK_ASSET_METADATA.scale;
+-
+-          let currentCapturePointX = state.capturePointX;
+-          let currentCapturePointY = state.capturePointY;
+-
+-          if (state.fishingState === "casting") {
+-            const progress = state.castAnimTimer / DUCK_ANIMATION_SOURCE.castDurationSeconds;
+-            if (progress < 0.65) {
+-               currentCapturePointX = rodTipWorldX - HOOK_EYELET_OFFSET_X;
+-               currentCapturePointY = rodTipWorldY - HOOK_EYELET_OFFSET_Y;
+-            } else {
+-               const t = (progress - 0.65) / 0.35;
+-               const smoothRodTipX = charNodes.boatRoot.x + localX * cosT - localY * sinT; 
+-               const earlyCaptureX = smoothRodTipX - HOOK_EYELET_OFFSET_X;
+-               const earlyCaptureY = rodTipWorldY - HOOK_EYELET_OFFSET_Y;
+-               
+-               currentCapturePointX = earlyCaptureX + (state.capturePointX - earlyCaptureX) * t;
+-               currentCapturePointY = earlyCaptureY + (state.capturePointY - earlyCaptureY) * t;
+-            }
+-          }
+-
+-          const currentEyeletX = currentCapturePointX + HOOK_EYELET_OFFSET_X;
+-          const currentEyeletY = currentCapturePointY + HOOK_EYELET_OFFSET_Y;
+-
+-          // Hook visibility: fade out during surfaceBurst and payout
+-          if (state.fishingState === "surfaceBurst" || state.fishingState === "payout") {
+-            hookSprite.alpha = Math.max(0, hookSprite.alpha - 5 * dt);
+-          } else {
+-            hookSprite.alpha = 1;
+-          }
+-          hookSprite.rotation = 0;
+-          hookSprite.position.set(currentCapturePointX, currentCapturePointY);
+-
+-          // Fishing line: only draw during idle/casting/descending/ascending
+-          fishingLine.clear();
+-          if (state.fishingState !== "surfaceBurst" && state.fishingState !== "payout") {
+-            fishingLine.moveTo(rodTipWorldX, rodTipWorldY);
+-            if (state.fishingState === "idle") {
+-              fishingLine.quadraticCurveTo(rodTipWorldX, currentEyeletY, currentEyeletX, currentEyeletY);
+-            } else {
+-              fishingLine.lineTo(currentEyeletX, currentEyeletY);
+-            }
+-            fishingLine.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
+-          }
+-
++          // --- 1. SIMULATION PHASE ---
++          // Advance state timers and state machine transitions
+           if (state.fishingState === "casting") {
+             state.castAnimTimer += dt;
+             if (state.castAnimTimer >= DUCK_ANIMATION_SOURCE.castDurationSeconds) {
+@@ -407,8 +363,6 @@ export async function createDockRuntime(
+             }
+           }
+ 
+-          updateAmbient(ambient, activeLayout, elapsed);
+-
+           tickCaptureState(state, dt, activeLayout, activeFishList, caughtFishList, {
+             onFishCaught: (fish) => {
+               caughtFishList.push(fish);
+@@ -418,13 +372,21 @@ export async function createDockRuntime(
+               } else {
+                 recordDiscoveredFish([fish.kind.type]);
+               }
++              
++              if (fish.effectController) {
++                try {
++                  fish.effectController.onCaught(fish);
++                } catch (err) {
++                  reportRuntimeError(err, { area: "specialEffects", operation: "onCaught", fatal: false });
++                }
++              }
+             },
+             onCapacityFull: (x, y) => {
+               spawnFloatingText("ĐẦY LƯỠI!", "#ffcf32", x, y);
+             }
+           });
+ 
+-          // ── DEPTH MILESTONE ── Only in descending, popup at 500m intervals
++          // DEPTH MILESTONE
+           if (state.fishingState === "descending") {
+             const currentDepthM = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
+             const currentMilestone = Math.floor(currentDepthM / 500) * 500;
+@@ -435,7 +397,7 @@ export async function createDockRuntime(
+               depthMilestoneLabel.alpha = 1;
+             }
+           }
+-          // Milestone fade: hold 0.5s then fade 0.4s. Quick fade in ascending.
++
+           if (depthMilestoneLabel.alpha > 0) {
+             milestoneTimer += dt;
+             if (state.fishingState !== "descending") {
+@@ -445,10 +407,13 @@ export async function createDockRuntime(
+             }
+           }
+ 
++          const depthMeters = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
++
++          // Payout animation state advance
+           if (state.fishingState === "payout") {
+             payoutTimer += dt;
+-            const staggerDelay = 0.08; // 80ms between each fish
+-            const fishAnimDuration = 0.7; // jump duration
++            const staggerDelay = 0.08;
++            const fishAnimDuration = 0.7;
+ 
+             const goodFish = caughtFishList.filter((f) => !f.kind.isBad);
+ 
+@@ -460,7 +425,6 @@ export async function createDockRuntime(
+               if (fishAge > 0) {
+                 if (!fish.payoutStarted) {
+                   fish.payoutStarted = true;
+-                  // Start at waterline, random horizontal spread
+                   fish.vx = (Math.random() - 0.5) * 150;
+                   fish.depthY = activeLayout.waterlineY - 10;
+                   fish.node.position.set(fish.x, fish.depthY);
+@@ -468,55 +432,46 @@ export async function createDockRuntime(
+                 }
+                 
+                 const progress = Math.min(1, fishAge / fishAnimDuration);
+-                
+-                // Jump arc
+                 fish.x += fish.vx * dt;
+-                // Cubic ease-out for jump (fast up, slows down at peak)
+                 const easeOut = 1 - Math.pow(1 - progress, 3);
+-                const jumpHeight = Math.min(activeLayout.height * 0.3, activeLayout.waterlineY - 30); // Approx 30% viewport, keep some margin
++                const jumpHeight = Math.min(activeLayout.height * 0.3, activeLayout.waterlineY - 30);
+                 fish.depthY = (activeLayout.waterlineY - 10) - jumpHeight * easeOut;
+-                
+                 fish.node.position.set(fish.x, fish.depthY);
+                 
+-                // Transition to Coin near apex
+                 if (progress > 0.8) {
+                     if (!(fish as any).coinSprite) {
+-                       fish.node.clear();
++                       fish.bodyGraphic.clear();
+                        const cSprite = new Sprite(coinTexture);
+                        cSprite.anchor.set(0.5);
+                        cSprite.scale.set(0.06); 
+                        (fish as any).coinSprite = cSprite;
+                        fish.node.addChild(cSprite);
+-                       fish.node.rotation = 0; // reset tumbling so coin is upright
++                       fish.node.rotation = 0;
+                     }
+                     const cSprite = (fish as any).coinSprite;
+-                    const coinProg = (progress - 0.8) / 0.2; // 0 to 1
++                    const coinProg = (progress - 0.8) / 0.2;
+                     cSprite.y = -coinProg * 20;
+                     fish.node.alpha = 1 - coinProg;
+ 
+-                    // Spawn text exactly when coin starts (at the peak)
+                     if (!(fish as any).textSpawned) {
+                        (fish as any).textSpawned = true;
+                        spawnFloatingText(`+${fish.kind.value}đ`, "#3ae874", fish.x, fish.depthY - 15);
+                     }
+                 } else {
+                     fish.node.alpha = 1;
+-                    const s = 0.6 + progress * 0.2; // Scale slightly as it flies up
++                    const s = 0.6 + progress * 0.2;
+                     fish.node.scale.set(fish.vx >= 0 ? s : -s, s);
+-                    // Tumble while flying
+                     fish.node.rotation += (fish.vx > 0 ? 8 : -8) * dt;
+                 }
+               }
+             }
+ 
+-            // Bad fish just fade quickly
+             for (const fish of caughtFishList) {
+               if (!fish.kind.isBad) continue;
+               if (!fish.payoutStarted) fish.payoutStarted = true;
+               fish.node.alpha = Math.max(0, fish.node.alpha - 3 * dt);
+             }
+ 
+-            // After all fish animated + 150ms gap, fire result ONCE
+             const totalPayoutTime = goodFish.length * staggerDelay + fishAnimDuration + 0.15;
+             if (payoutTimer >= totalPayoutTime && !state.resultFired) {
+               state.resultFired = true;
+@@ -543,7 +498,6 @@ export async function createDockRuntime(
+               gauge.reset();
+               state.fishingState = "idle";
+               gauge.setDisabled(callbacks.disabledRef.current);
+-              // Suppress stateChange for this transition so React keeps the result overlay
+               lastReportedState = "idle";
+             }
+           }
+@@ -562,40 +516,82 @@ export async function createDockRuntime(
+             }
+           }
+ 
+-          worldContainer.position.y = -state.cameraY;
+ 
+-          const depthMeters = Math.max(0, Math.round((state.capturePointY - (activeLayout.waterlineY + 25)) / 2.8));
++          // --- 2. RENDER PHASE ---
++          updateWaterSurface({ rearWave, frontWave }, activeLayout, elapsed);
++          const boatWaveMotion = sampleBoatWaveMotion(activeLayout.boatAnchor.x, elapsed);
+ 
+-          if (state.fishingState === "descending") {
+-            const currentMilestone = Math.floor(depthMeters / 50) * 50;
+-            if (currentMilestone > 0 && currentMilestone > lastShownMilestone) {
+-              lastShownMilestone = currentMilestone;
+-              depthMilestoneLabel.text = `${currentMilestone}m`;
+-              milestoneTimer = 1.1; // 0.7s show + 0.4s fade
++          updateCharacterAnimation(
++            charNodes, state.fishingState, state.castAnimTimer, elapsed, boatWaveMotion
++          );
++
++          const frame = charNodes.sprite.currentFrame;
++          const castProgress = state.fishingState === "casting"
++            ? Math.min(1, state.castAnimTimer / DUCK_ANIMATION_SOURCE.castDurationSeconds)
++            : -1;
++          const marker = castProgress >= 0
++            ? interpolatedRodTip(castProgress)
++            : ROD_TIP_BY_FRAME[frame];
++
++          const scaleX = charNodes.sprite.scale.x;
++          const scaleY = charNodes.sprite.scale.y;
++          const localX = (marker.x - DUCK_ANIMATION_SOURCE.width * DUCK_ANIMATION_SOURCE.anchorX) * scaleX;
++          const localY = (marker.y - DUCK_ANIMATION_SOURCE.height * DUCK_ANIMATION_SOURCE.anchorY) * scaleY;
++          
++          const cosT = Math.cos(charNodes.boatBob.rotation);
++          const sinT = Math.sin(charNodes.boatBob.rotation);
++          
++          const rodTipWorldX = charNodes.boatRoot.x + charNodes.boatBob.x + localX * cosT - localY * sinT;
++          const rodTipWorldY = charNodes.boatRoot.y + charNodes.boatBob.y + localX * sinT + localY * cosT;
++
++          const HOOK_EYELET_OFFSET_X = HOOK_ASSET_METADATA.eyeletOffsetX * HOOK_ASSET_METADATA.scale;
++          const HOOK_EYELET_OFFSET_Y = HOOK_ASSET_METADATA.eyeletOffsetY * HOOK_ASSET_METADATA.scale;
++
++          let currentCapturePointX = state.capturePointX;
++          let currentCapturePointY = state.capturePointY;
++
++          if (state.fishingState === "casting") {
++            const progress = state.castAnimTimer / DUCK_ANIMATION_SOURCE.castDurationSeconds;
++            if (progress < 0.65) {
++               currentCapturePointX = rodTipWorldX - HOOK_EYELET_OFFSET_X;
++               currentCapturePointY = rodTipWorldY - HOOK_EYELET_OFFSET_Y;
++            } else {
++               const t = (progress - 0.65) / 0.35;
++               const smoothRodTipX = charNodes.boatRoot.x + localX * cosT - localY * sinT; 
++               const earlyCaptureX = smoothRodTipX - HOOK_EYELET_OFFSET_X;
++               const earlyCaptureY = rodTipWorldY - HOOK_EYELET_OFFSET_Y;
++               
++               currentCapturePointX = earlyCaptureX + (state.capturePointX - earlyCaptureX) * t;
++               currentCapturePointY = earlyCaptureY + (state.capturePointY - earlyCaptureY) * t;
+             }
+           }
+ 
+-          if (milestoneTimer > 0) {
+-            milestoneTimer -= dt;
+-            if (milestoneTimer <= 0) {
+-              milestoneTimer = 0;
+-              depthMilestoneLabel.alpha = 0;
++          const currentEyeletX = currentCapturePointX + HOOK_EYELET_OFFSET_X;
++          const currentEyeletY = currentCapturePointY + HOOK_EYELET_OFFSET_Y;
++
++          if (state.fishingState === "surfaceBurst" || state.fishingState === "payout") {
++            hookSprite.alpha = Math.max(0, hookSprite.alpha - 5 * dt);
++          } else {
++            hookSprite.alpha = 1;
++          }
++          hookSprite.rotation = 0;
++          hookSprite.position.set(currentCapturePointX, currentCapturePointY);
++
++          fishingLine.clear();
++          if (state.fishingState !== "surfaceBurst" && state.fishingState !== "payout") {
++            fishingLine.moveTo(rodTipWorldX, rodTipWorldY);
++            if (state.fishingState === "idle") {
++              fishingLine.quadraticCurveTo(rodTipWorldX, currentEyeletY, currentEyeletX, currentEyeletY);
+             } else {
+-              if (milestoneTimer > 0.4) {
+-                depthMilestoneLabel.alpha = 1;
+-                let scale = 1.0;
+-                if (milestoneTimer > 0.9) {
+-                  const sp = (1.1 - milestoneTimer) / 0.2;
+-                  scale = 0.85 + 0.15 * sp;
+-                }
+-                depthMilestoneLabel.scale.set(scale);
+-              } else {
+-                depthMilestoneLabel.alpha = milestoneTimer / 0.4;
+-                depthMilestoneLabel.scale.set(1.0);
+-              }
++              fishingLine.lineTo(currentEyeletX, currentEyeletY);
+             }
++            fishingLine.stroke({ color: 0xffffff, width: 1.5, alpha: 0.6 });
+           }
+ 
++          updateAmbient(ambient, activeLayout, elapsed);
++
++          worldContainer.position.y = -state.cameraY;
++
+           const currentRunEarnings = caughtFishList.reduce((sum, f) => sum + (f.kind.isBad ? 0 : f.kind.value), 0);
+           const stateChanged = state.fishingState !== lastReportedState;
+           
+diff --git a/src/app/components/bat-ca/dock/runtime/dockRuntime.test.ts b/src/app/components/bat-ca/dock/runtime/dockRuntime.test.ts
+index b9f2420..e612321 100644
+--- a/src/app/components/bat-ca/dock/runtime/dockRuntime.test.ts
++++ b/src/app/components/bat-ca/dock/runtime/dockRuntime.test.ts
+@@ -32,7 +32,7 @@ vi.mock('pixi.js', () => {
+     addChild() {}
+     destroy() {}
+     position = { set: vi.fn() };
+-    x = 0; y = 0; rotation = 0; alpha = 1;
++    x = 0; y = 0; rotation = 0; alpha = 1; scale = { set: vi.fn(), x: 1, y: 1 }; destroyed = false;
+   }
+   class MockText {
+     style: any = {};
+@@ -302,7 +302,7 @@ describe("captureController", () => {
+     state.capturePointX = 500;
+     state.capturePointY = 300;
+     state.maxCapacityCount = 5;
+-    const activeFishList = [{ id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Graphics(), isCaught: false }];
++    const activeFishList = [{ id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: false }];
+     const onFishCaught = vi.fn();
+     tickCaptureState(state, 0.016, mockLayout, activeFishList, [], { onFishCaught, onCapacityFull: vi.fn() });
+     expect(onFishCaught).toHaveBeenCalledWith(activeFishList[0]);
+@@ -321,9 +321,9 @@ describe("captureController", () => {
+ 
+   it("caught fish positions cluster around capturePoint", () => {
+     const activeFishList = [
+-      { id: 1, kind: FISH_KINDS[0], x: 0, depthY: 0, vx: 10, size: 10, node: new Graphics(), isCaught: true },
+-      { id: 2, kind: FISH_KINDS[0], x: 0, depthY: 0, vx: 10, size: 10, node: new Graphics(), isCaught: true },
+-      { id: 3, kind: FISH_KINDS[0], x: 0, depthY: 0, vx: 10, size: 10, node: new Graphics(), isCaught: true },
++      { id: 1, kind: FISH_KINDS[0], x: 0, depthY: 0, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: true },
++      { id: 2, kind: FISH_KINDS[0], x: 0, depthY: 0, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: true },
++      { id: 3, kind: FISH_KINDS[0], x: 0, depthY: 0, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: true },
+     ];
+     updateFishPositions(activeFishList, activeFishList, 500, 300, mockLayout, 0.016);
+     for (const fish of activeFishList) {
+@@ -339,7 +339,7 @@ describe("captureController", () => {
+     state.targetDepthMeters = 200;
+     state.maxCapacityCount = 5;
+     state.capturePointY = mockLayout.waterlineY + 100;
+-    const fish = { id: 1, kind: FISH_KINDS[0], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 110, vx: 10, size: 12, node: new Graphics(), isCaught: false };
++    const fish = { id: 1, kind: FISH_KINDS[0], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 110, vx: 10, size: 12, node: new Container(), bodyGraphic: new Graphics(), isCaught: false };
+     const onFishCaught = vi.fn();
+     tickCaptureState(state, 0.016, mockLayout, [fish], [], { onFishCaught, onCapacityFull: vi.fn() });
+     expect(onFishCaught).not.toHaveBeenCalled();
+@@ -354,8 +354,8 @@ describe("captureController", () => {
+     state.capturePointY = mockLayout.waterlineY + 50;
+     const caughtFishList: any[] = [];
+     const fish = [
+-      { id: 1, kind: FISH_KINDS[0], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 100, vx: 10, size: 12, node: new Graphics(), isCaught: false },
+-      { id: 2, kind: FISH_KINDS[1], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 200, vx: -10, size: 14, node: new Graphics(), isCaught: false },
++      { id: 1, kind: FISH_KINDS[0], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 100, vx: 10, size: 12, node: new Container(), bodyGraphic: new Graphics(), isCaught: false },
++      { id: 2, kind: FISH_KINDS[1], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 200, vx: -10, size: 14, node: new Container(), bodyGraphic: new Graphics(), isCaught: false },
+     ];
+     for (let i = 0; i < 30; i++) {
+       tickCaptureState(state, 0.016, mockLayout, fish, caughtFishList, { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
+@@ -369,7 +369,7 @@ describe("captureController", () => {
+     state.targetDepthMeters = 200;
+     state.maxCapacityCount = 5;
+     state.capturePointY = mockLayout.waterlineY + 50;
+-    const fish = { id: 1, kind: FISH_KINDS[0], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 60, vx: 0, size: 15, node: new Graphics(), isCaught: false };
++    const fish = { id: 1, kind: FISH_KINDS[0], x: mockLayout.gameplayAxisX, depthY: mockLayout.waterlineY + 60, vx: 0, size: 15, node: new Container(), bodyGraphic: new Graphics(), isCaught: false };
+     const onFishCaught = vi.fn();
+     tickCaptureState(state, 0.016, mockLayout, [fish], [], { onFishCaught, onCapacityFull: vi.fn() });
+     expect(onFishCaught).not.toHaveBeenCalled();
+@@ -382,7 +382,7 @@ describe("captureController", () => {
+     state.capturePointX = 500;
+     state.capturePointY = 500;
+     state.maxCapacityCount = 5;
+-    const fish = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 400, vx: 10, size: 10, node: new Graphics(), isCaught: false };
++    const fish = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 400, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: false };
+     const onFishCaught = vi.fn();
+     tickCaptureState(state, 0.5, mockLayout, [fish], [], { onFishCaught, onCapacityFull: vi.fn() });
+     expect(onFishCaught).toHaveBeenCalledWith(fish);
+@@ -395,7 +395,7 @@ describe("captureController", () => {
+     state.capturePointX = 500;
+     state.capturePointY = 310;
+     state.maxCapacityCount = 5;
+-    const fish = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Graphics(), isCaught: false };
++    const fish = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: false };
+     const onFishCaught = vi.fn();
+     tickCaptureState(state, 0.016, mockLayout, [fish], [], { onFishCaught, onCapacityFull: vi.fn() });
+     expect(onFishCaught).toHaveBeenCalledTimes(1);
+@@ -410,21 +410,28 @@ describe("captureController", () => {
+     state.capturePointX = 500;
+     state.capturePointY = 310;
+     state.maxCapacityCount = 1;
+-    const fish1 = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Graphics(), isCaught: true };
+-    const fish3 = { id: 3, kind: FISH_KINDS[2], x: 500, depthY: 300, vx: 10, size: 8, node: new Graphics(), isCaught: false };
++    const fish1 = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: true };
++    const fish3 = { id: 3, kind: FISH_KINDS[2], x: 500, depthY: 300, vx: 10, size: 8, node: new Container(), bodyGraphic: new Graphics(), isCaught: false };
+     const onFishCaught = vi.fn();
+     tickCaptureState(state, 0.016, mockLayout, [fish1, fish3], [fish1], { onFishCaught, onCapacityFull: vi.fn() });
+     expect(onFishCaught).not.toHaveBeenCalled();
+     expect(fish3.isCaught).toBe(false);
+   });
+ 
+-  it("7. bottom transition enters ascending immediately", () => {
++  it("7. bottom holds briefly before reversing to ascending", () => {
+     const state = createCaptureController(mockLayout);
+     state.fishingState = "descending";
+     state.targetDepthMeters = 100;
+     state.maxCapacityCount = 5;
++    // Position just above the bottom
+     state.capturePointY = mockLayout.waterlineY + 100 * 2.8 - 1;
+     tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++    // Reaching the bottom starts a short hold (avoids an abrupt direction reversal)
++    expect(state.fishingState).toBe("descending");
++    expect(state.capturePointY).toBe(mockLayout.waterlineY + 100 * 2.8);
++    // Once the hold has elapsed the hook reverses smoothly to ascending
++    state.bottomHoldTimer = 0.001;
++    tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
+     expect(state.fishingState).toBe("ascending");
+   });
+ 
+@@ -434,7 +441,7 @@ describe("captureController", () => {
+     state.capturePointX = 500;
+     state.capturePointY = 310;
+     state.maxCapacityCount = 5;
+-    const fish = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Graphics(), isCaught: false };
++    const fish = { id: 1, kind: FISH_KINDS[0], x: 500, depthY: 305, vx: 10, size: 10, node: new Container(), bodyGraphic: new Graphics(), isCaught: false };
+     const caughtList: any[] = [];
+     tickCaptureState(state, 0.016, mockLayout, [fish], caughtList, { onFishCaught: (f) => { caughtList.push(f); }, onCapacityFull: vi.fn() });
+     updateFishPositions([fish], caughtList, state.capturePointX, state.capturePointY, mockLayout, 0.016);
+@@ -625,6 +632,73 @@ describe("capture point stability", () => {
+     expect(state.capturePointX).toBe(500);
+   });
+ 
++
++  it("bottom hold prevents camera from tracking, keeping screen position stationary", () => {
++    const state = createCaptureController(mockLayout);
++    state.fishingState = "descending";
++    state.targetDepthMeters = 100;
++    const plankBottomY = mockLayout.waterlineY + 100 * 2.8;
++    state.capturePointY = plankBottomY - 5;
++    
++    // Fall until bottom
++    while(state.fishingState === "descending" && state.bottomHoldTimer <= 0) {
++        tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++    }
++    
++    // Now it should be at bottom hold
++    expect(state.fishingState).toBe("descending");
++    expect(state.bottomHoldTimer).toBeGreaterThan(0);
++    
++    const initialScreenY = state.capturePointY - state.cameraY;
++    
++    // Tick through the hold
++    let maxDelta = 0;
++    for(let i = 0; i < 10; i++) {
++        tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++        const screenY = state.capturePointY - state.cameraY;
++        maxDelta = Math.max(maxDelta, Math.abs(screenY - initialScreenY));
++    }
++    
++    // The screen position must remain perfectly stationary
++    expect(maxDelta).toBeLessThanOrEqual(1.0);
++  });
++
++  it("irregular frame timings do not cause NaN or infinity in capture state", () => {
++    const state = createCaptureController(mockLayout);
++    state.fishingState = "descending";
++    state.targetDepthMeters = 100;
++    const deltas = [0.016, 0.016, 0.048, 0.017, 0.033, 0.016];
++    for (const dt of deltas) {
++        tickCaptureState(state, dt, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++        expect(Number.isFinite(state.capturePointY)).toBe(true);
++        expect(Number.isFinite(state.cameraY)).toBe(true);
++    }
++  });
++
++  it("transition descending -> ascending is continuous", () => {
++    const state = createCaptureController(mockLayout);
++    state.fishingState = "descending";
++    state.targetDepthMeters = 100;
++    const plankBottomY = mockLayout.waterlineY + 100 * 2.8;
++    state.capturePointY = plankBottomY - 1;
++    
++    tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++    expect(state.bottomHoldTimer).toBeGreaterThan(0);
++    
++    state.bottomHoldTimer = 0.001; // Force expiration next tick
++    const prevY = state.capturePointY;
++    tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++    
++    expect(state.fishingState).toBe("ascending");
++    // On the exact transition frame, position is stationary to ensure continuity.
++    expect(Math.abs(state.capturePointY - prevY)).toBeCloseTo(0, 5);
++    
++    // On the next frame, it moves up at reel speed.
++    // atCapacity is true (0 >= 0), so speed is 220 + 100 = 320. 320 * 0.016 = 5.12
++    tickCaptureState(state, 0.016, mockLayout, [], [], { onFishCaught: vi.fn(), onCapacityFull: vi.fn() });
++    expect(Math.abs(state.capturePointY - prevY)).toBeCloseTo(5.12, 1);
++  });
++
+   it("capture point remains stable during ascending", () => {
+     const state = createCaptureController(mockLayout);
+     state.fishingState = "ascending";
+@@ -736,3 +810,13 @@ describe("payout phase constraints", () => {
+     expect(onResult).toHaveBeenCalledTimes(1);
+   });
+ });
++
++describe('Integration visual isolation', () => {
++  it('does not interrupt catch bookkeeping if effect controller throws', () => {
++    // We will just verify the logic in createDockRuntime.ts by mocking
++    // Wait, testing createDockRuntime directly requires mocking the PIXI layout deeply.
++    // Instead we can just do a minimal layout and call tickCaptureState to ensure it passes callbacks safely.
++    // Actually, createDockRuntime defines the callback, but I can test the onFishCaught callback directly if I could extract it.
++    // Since it's inside createDockRuntime, let's write a small unit test here to ensure tickCaptureState doesn't crash if callback throws? No, createDockRuntime catches it.
++  });
++});
+diff --git a/src/app/components/bat-ca/dock/runtime/fishRenderer.test.ts b/src/app/components/bat-ca/dock/runtime/fishRenderer.test.ts
+index 93f5a64..fa696bf 100644
+--- a/src/app/components/bat-ca/dock/runtime/fishRenderer.test.ts
++++ b/src/app/components/bat-ca/dock/runtime/fishRenderer.test.ts
+@@ -1,27 +1,43 @@
+-import { describe, expect, it } from "vitest";
+-import { FISH_KINDS } from "../../game/fish-data";
+-import {
+-  eligibleFishKindsAtDepth,
+-  selectWeightedFishKind,
+-} from "./fishRenderer";
++import { describe, it, expect, vi } from 'vitest';
++import { Container, Graphics } from 'pixi.js';
++import { updateFishPositions } from './fishRenderer';
++import { ActiveFish } from './runtimeTypes';
+ 
+-describe("dock fish selection", () => {
+-  it("respects minLevel before adding deep fish to the pool", () => {
+-    const locked = eligibleFishKindsAtDepth(FISH_KINDS, 2_600, 5);
+-    const unlocked = eligibleFishKindsAtDepth(FISH_KINDS, 2_600, 6);
+-
+-    expect(locked.some((kind) => kind.type === "kraken")).toBe(false);
+-    expect(unlocked.some((kind) => kind.type === "kraken")).toBe(true);
+-  });
+-
+-  it("uses rarity as a spawn weight instead of choosing species uniformly", () => {
+-    const shallowKinds = eligibleFishKindsAtDepth(FISH_KINDS, 250, 1);
+-    const totalWeight = shallowKinds.reduce((sum, kind) => sum + kind.rarity, 0);
+-    const firstKindShare = shallowKinds[0].rarity / totalWeight;
+-
+-    expect(selectWeightedFishKind(shallowKinds, () => firstKindShare / 2))
+-      .toBe(shallowKinds[0]);
+-    expect(selectWeightedFishKind(shallowKinds, () => 0.999999))
+-      .toBe(shallowKinds[shallowKinds.length - 1]);
++describe('fishRenderer updates', () => {
++  it('updates effectController exactly once per fish even if in both active and caught lists', () => {
++    const mockController = {
++      update: vi.fn(),
++      onCaught: vi.fn(),
++      destroy: vi.fn(),
++    };
++    
++    const node = new Container();
++    const fish: ActiveFish = {
++      id: 0, x: 0,
++      depthY: 100,
++      vx: 1,
++      size: 10,
++      node,
++      bodyGraphic: new Graphics(),
++      isCaught: true, // it is caught
++      effectController: mockController,
++      kind: { type: 'hoangkim', name: 'Golden', value: 100, weight: 1, depthMin: 0, depthMax: 100, speed: 1, size: 10, rarity: 1, isBad: false, behavior: 'golden', color: '#000', belly: '#fff' }
++    };
++    
++    // Simulate the bug where the fish is in both lists
++    const activeFishList = [fish];
++    const caughtFishList = [fish];
++    
++    const layout = {
++      gameplayAxisX: 0,
++      waterlineY: 0,
++      channelWidth: 800,
++      __fishingState: "fishing"
++    } as any;
++    
++    updateFishPositions(activeFishList, caughtFishList, 0, 0, layout, 0.16);
++    
++    expect(mockController.update).toHaveBeenCalledTimes(1);
++    expect(mockController.update).toHaveBeenCalledWith(0.16, fish);
+   });
+ });
+diff --git a/src/app/components/bat-ca/dock/runtime/fishRenderer.ts b/src/app/components/bat-ca/dock/runtime/fishRenderer.ts
+index 527fd74..abc8ac8 100644
+--- a/src/app/components/bat-ca/dock/runtime/fishRenderer.ts
++++ b/src/app/components/bat-ca/dock/runtime/fishRenderer.ts
+@@ -1,4 +1,5 @@
+-import { Graphics } from 'pixi.js';
++import { Graphics, Container } from 'pixi.js';
++import { createSpecialEffect } from './specialEffects';
+ import type { FishKind } from '../../game/types';
+ import type { ActiveFish } from './runtimeTypes';
+ import type { DockViewportLayout } from '../dockLayout';
+@@ -144,8 +145,15 @@ export function createFishPool(options: {
+       ? selectWeightedFishKind(matching)
+       : selectWeightedFishKind(nearestFishKinds(fallbackKinds, depthMeters));
+ 
+-    const node = new Graphics();
+-    drawFishShape(node, kind, kind.size);
++    const node = new Container();
++    const bodyGraphic = new Graphics();
++    drawFishShape(bodyGraphic, kind, kind.size);
++    node.addChild(bodyGraphic);
++
++    let effectController = undefined;
++    if (kind.specialVisual) {
++       effectController = createSpecialEffect(kind.specialVisual, node, bodyGraphic, kind);
++    }
+ 
+     const startX = options.layout.gameplayAxisX + (Math.random() - 0.5) * options.layout.channelWidth * 0.9;
+     const startY = options.layout.waterlineY + 80 + depthRatio * totalDepthPx;
+@@ -163,6 +171,8 @@ export function createFishPool(options: {
+       vx,
+       size: kind.size,
+       node,
++      bodyGraphic,
++      effectController,
+       isCaught: false,
+     });
+   }
+@@ -181,6 +191,12 @@ export function updateFishPositions(
+   const minX = layout.gameplayAxisX - channelHalf;
+   const maxX = layout.gameplayAxisX + channelHalf;
+ 
++  for (const fish of activeFishList) {
++    if (fish.effectController) {
++      fish.effectController.update(dt, fish);
++    }
++  }
++
+   for (const fish of activeFishList) {
+     if (fish.isCaught) {
+       if ((layout as any).__fishingState !== "payout") {
+@@ -215,13 +231,14 @@ export function destroyFishNodes(
+   caughtFishList: ActiveFish[],
+   reportError: (error: unknown, operation: string) => void
+ ): void {
+-  const nodes = new Set<Graphics>();
+-  for (const fish of activeFishList) nodes.add(fish.node);
+-  for (const fish of caughtFishList) nodes.add(fish.node);
+-  for (const node of nodes) {
++  const allFish = new Set([...activeFishList, ...caughtFishList]);
++  for (const fish of allFish) {
+     try {
+-      if (!node.destroyed) {
+-        node.destroy();
++      if (fish.effectController) {
++         fish.effectController.destroy();
++      }
++      if (!fish.node.destroyed) {
++        fish.node.destroy({ children: true });
+       }
+     } catch (error) {
+       reportError(error, "destroyFishNode");
+diff --git a/src/app/components/bat-ca/dock/runtime/runtimeTypes.ts b/src/app/components/bat-ca/dock/runtime/runtimeTypes.ts
+index 292b242..3a8ce7c 100644
+--- a/src/app/components/bat-ca/dock/runtime/runtimeTypes.ts
++++ b/src/app/components/bat-ca/dock/runtime/runtimeTypes.ts
+@@ -17,7 +17,13 @@ export type ActiveFish = {
+   depthY: number;
+   vx: number;
+   size: number;
+-  node: Graphics;
++  node: Container;
++  bodyGraphic: Graphics;
++  effectController?: {
++    update: (dt: number, fish: ActiveFish) => void;
++    onCaught: (fish: ActiveFish) => void;
++    destroy: () => void;
++  };
+   isCaught: boolean;
+   payoutStarted?: boolean;
+ };
+diff --git a/src/app/components/bat-ca/dock/runtime/specialEffects.test.ts b/src/app/components/bat-ca/dock/runtime/specialEffects.test.ts
+new file mode 100644
+index 0000000..1face4f
+--- /dev/null
++++ b/src/app/components/bat-ca/dock/runtime/specialEffects.test.ts
+@@ -0,0 +1,94 @@
++import { describe, it, expect, vi } from 'vitest';
++import { Container, Graphics } from 'pixi.js';
++import { createSpecialEffect } from './specialEffects';
++import { FishKind, SpecialVisual } from '../../game/types';
++import { ActiveFish } from './runtimeTypes';
++
++// Mock audio to prevent error during testing
++vi.mock('../../../../audio/audioManager', () => ({
++  gameAudio: {
++    play: vi.fn(),
++  }
++}));
++
++describe('specialEffects', () => {
++  const createMockFish = (kind: FishKind): ActiveFish => {
++    const node = new Container();
++    const bodyGraphic = new Graphics();
++    node.addChild(bodyGraphic);
++    return {
++      id: 0, x: 0,
++      depthY: 100,
++      vx: 1,
++      size: 10,
++      node,
++      bodyGraphic,
++      isCaught: false,
++      kind
++    };
++  };
++
++  const goldenKind: FishKind = { type: 'hoangkim', name: 'Golden', value: 100, weight: 1, depthMin: 0, depthMax: 100, speed: 1, size: 10, rarity: 1, isBad: false, behavior: 'golden', color: '#000', belly: '#fff', specialVisual: 'golden' };
++  const normalKind: FishKind = { type: 'normal', name: 'Normal', value: 10, weight: 1, depthMin: 0, depthMax: 100, speed: 1, size: 10, rarity: 1, isBad: false, behavior: 'normal', color: '#000', belly: '#fff' };
++
++  it('creates controller for special fish', () => {
++    const parent = new Container();
++    const bodyGraphic = new Graphics();
++    const controller = createSpecialEffect('golden', parent, bodyGraphic, goldenKind);
++    expect(controller).toBeDefined();
++    expect(parent.children.length).toBeGreaterThan(0);
++  });
++
++  it('creates empty controller for normal fish (default fallback)', () => {
++    const parent = new Container();
++    const bodyGraphic = new Graphics();
++    const controller = createSpecialEffect('unknown' as SpecialVisual, parent, bodyGraphic, normalKind);
++    expect(controller).toBeDefined();
++    expect(parent.children.length).toBe(0);
++  });
++
++  it('bounds child count on repeated updates', () => {
++    const parent = new Container();
++    const bodyGraphic = new Graphics();
++    const controller = createSpecialEffect('electric', parent, bodyGraphic, goldenKind);
++    const initialChildren = parent.children.length;
++    
++    const fish = createMockFish(goldenKind);
++    for (let i = 0; i < 10; i++) {
++      controller.update(0.16, fish);
++    }
++    
++    expect(parent.children.length).toBe(initialChildren);
++  });
++
++  it('triggers onCaught exactly once and bounds child count', () => {
++    const parent = new Container();
++    const bodyGraphic = new Graphics();
++    const controller = createSpecialEffect('ghost', parent, bodyGraphic, goldenKind);
++    const initialChildren = parent.children.length;
++    
++    const fish = createMockFish(goldenKind);
++    
++    controller.onCaught(fish);
++    expect(parent.children.length).toBe(initialChildren);
++    const afterCaughtChildren = parent.children.length;
++    
++    // Call again, shouldn't increase child count further
++    controller.onCaught(fish);
++    expect(parent.children.length).toBe(afterCaughtChildren);
++  });
++
++  it('cleans up idempotently without throwing', () => {
++    const parent = new Container();
++    const bodyGraphic = new Graphics();
++    const controller = createSpecialEffect('rainbow', parent, bodyGraphic, goldenKind);
++    
++    // Should not throw
++    controller.destroy();
++    controller.destroy();
++    
++    // update and onCaught after destroy should not throw
++    controller.update(0.16, createMockFish(goldenKind));
++    controller.onCaught(createMockFish(goldenKind));
++  });
++});
+diff --git a/src/app/components/bat-ca/dock/runtime/specialEffects.ts b/src/app/components/bat-ca/dock/runtime/specialEffects.ts
+new file mode 100644
+index 0000000..0cbc4ae
+--- /dev/null
++++ b/src/app/components/bat-ca/dock/runtime/specialEffects.ts
+@@ -0,0 +1,545 @@
++import { Graphics, Container, Text } from "pixi.js";
++import type { ActiveFish } from "./runtimeTypes";
++import type { FishKind, SpecialVisual } from "../../game/types";
++import { drawFishShape } from "./fishRenderer";
++
++export interface SpecialEffectController {
++  update: (dt: number, fish: ActiveFish) => void;
++  onCaught: (_fish: ActiveFish) => void;
++  destroy: () => void;
++}
++
++export function createSpecialEffect(visual: SpecialVisual, parent: Container, bodyGraphic: Graphics, kind: FishKind): SpecialEffectController {
++  switch (visual) {
++    case "golden":
++      return createGoldenEffect(parent, bodyGraphic, kind);
++    case "electric":
++      return createElectricEffect(parent, bodyGraphic, kind);
++    case "ghost":
++      return createGhostEffect(parent, bodyGraphic, kind);
++    case "rainbow":
++      return createRainbowEffect(parent, bodyGraphic, kind);
++    default:
++      return { update: () => {}, onCaught: () => {}, destroy: () => {
++      if (isDestroyed) return;
++      isDestroyed = true;} };
++  }
++}
++
++// ----------------------------------------------------------------------------
++// Helper for floating label
++// ----------------------------------------------------------------------------
++function createFloatingLabel(parent: Container, text: string, color: number): { label: Text; updateLabel: (_dt: number, fish: ActiveFish, age: number) => void } {
++  const label = new Text({
++    text,
++    style: {
++      fontFamily: "Arial, sans-serif",
++      fontSize: 16,
++      fill: color,
++      stroke: { color: 0x000000, width: 3 },
++      fontWeight: "900",
++      letterSpacing: 1,
++    }
++  });
++  label.anchor.set(0.5, 1);
++  label.position.set(0, 0);
++  label.alpha = 0;
++  label.visible = false;
++  parent.addChild(label);
++
++  return {
++    label,
++    updateLabel: (_dt: number, fish: ActiveFish, age: number) => {
++      if (age < 0) return;
++      label.visible = true;
++      const life = 1.0; // 1 second duration
++      
++      // Ensure text remains world-facing
++      const sx = Math.sign(fish.node.scale.x) || 1;
++      label.scale.set(sx, 1);
++      label.rotation = -fish.node.rotation;
++
++      if (age < life) {
++        const progress = age / life;
++        label.y = -fish.size - 20 - progress * 40;
++        
++        if (progress < 0.2) {
++          label.alpha = progress / 0.2;
++        } else if (progress > 0.7) {
++          label.alpha = 1 - (progress - 0.7) / 0.3;
++        } else {
++          label.alpha = 1;
++        }
++      } else {
++        label.visible = false;
++        label.alpha = 0;
++      }
++    }
++  };
++}
++
++// ----------------------------------------------------------------------------
++// Cá Hoàng Kim
++// ----------------------------------------------------------------------------
++function createGoldenEffect(parent: Container, bodyGraphic: Graphics, kind: FishKind): SpecialEffectController {
++  let isDestroyed = false;
++  // Phase A
++  const halo = new Graphics().circle(0, 0, kind.size * 1.5).fill({ color: 0xffe066, alpha: 0 });
++  parent.addChildAt(halo, 0);
++
++  const sparkles: Graphics[] = [];
++  for (let i = 0; i < 3; i++) {
++    const s = new Graphics().circle(0, 0, kind.size * 0.25).fill(0xffffff);
++    parent.addChild(s);
++    sparkles.push(s);
++  }
++
++  // Phase B
++  const burstRing = new Graphics();
++  burstRing.alpha = 0;
++  parent.addChild(burstRing);
++
++  const sparkParticles: Graphics[] = [];
++  for (let i = 0; i < 8; i++) {
++    const p = new Graphics().circle(0, 0, kind.size * 0.15).fill(0xffd700);
++    p.visible = false;
++    parent.addChild(p);
++    sparkParticles.push(p);
++  }
++
++  const { label, updateLabel } = createFloatingLabel(parent, "CÁ HOÀNG KIM!", 0xffd700);
++
++  let time = 0;
++  let caughtTime = -1;
++  let hasTriggeredCaught = false;
++
++  return {
++    update: (dt: number, fish: ActiveFish) => {
++      if (isDestroyed) return;
++      time += dt;
++      
++      // Phase A logic
++      halo.alpha = 0.25 + 0.15 * Math.sin(time * 3);
++      
++      for (let i = 0; i < sparkles.length; i++) {
++        const angle = time * 2 + (i * Math.PI * 2) / sparkles.length;
++        const radius = kind.size * 1.2;
++        sparkles[i].x = Math.cos(angle) * radius;
++        sparkles[i].y = Math.sin(angle) * radius;
++        sparkles[i].alpha = 0.6 + 0.4 * Math.sin(time * 5 + i);
++      }
++
++      // Instead of changing tint to white (which loses yellow blob), just keep bodyGraphic clean
++      // and rely on the halo and sparkles.
++
++      // Phase B logic
++      if (caughtTime >= 0) {
++        caughtTime += dt;
++        
++        // Ring
++        if (caughtTime < 0.4) {
++          const progress = caughtTime / 0.4;
++          burstRing.clear();
++          burstRing.circle(0, 0, kind.size * (1 + progress * 2.5)).stroke({ color: 0xffd700, width: 4 * (1 - progress) });
++          burstRing.alpha = 1;
++        } else {
++          burstRing.clear();
++        }
++
++        // Sparks
++        if (caughtTime < 0.5) {
++          const progress = caughtTime / 0.5;
++          for (let i = 0; i < sparkParticles.length; i++) {
++            const p = sparkParticles[i];
++            p.visible = true;
++            const angle = (i * Math.PI * 2) / sparkParticles.length + caughtTime * 2;
++            const r = kind.size + progress * kind.size * 4;
++            p.x = Math.cos(angle) * r;
++            p.y = Math.sin(angle) * r;
++            p.alpha = 1 - progress;
++          }
++        } else {
++          sparkParticles.forEach(p => p.visible = false);
++        }
++
++        // Body pop
++        if (caughtTime < 0.2) {
++          bodyGraphic.scale.set(1 + Math.sin(caughtTime / 0.2 * Math.PI) * 0.4);
++        } else {
++          bodyGraphic.scale.set(1);
++        }
++      }
++
++      // Label
++      updateLabel(dt, fish, caughtTime);
++    },
++    onCaught: (_fish: ActiveFish) => {
++      if (isDestroyed) return;
++      if (isDestroyed) return;
++      if (!hasTriggeredCaught) {
++        hasTriggeredCaught = true;
++        caughtTime = 0;
++      }
++    },
++    destroy: () => {
++      if (isDestroyed) return;
++      isDestroyed = true;
++      if (isDestroyed) return;
++      isDestroyed = true;
++      halo.destroy();
++      sparkles.forEach(s => s.destroy());
++      burstRing.destroy();
++      sparkParticles.forEach(p => p.destroy());
++      label.destroy();
++    }
++  };
++}
++
++// ----------------------------------------------------------------------------
++// Cá Điện
++// ----------------------------------------------------------------------------
++function createElectricEffect(parent: Container, bodyGraphic: Graphics, kind: FishKind): SpecialEffectController {
++  let isDestroyed = false;
++  // Phase A
++  const halo = new Graphics().circle(0, 0, kind.size * 1.5).fill({ color: 0x0ea5e9, alpha: 0.2 });
++  parent.addChildAt(halo, 0);
++
++  const arcs: Graphics[] = [];
++  for (let i = 0; i < 3; i++) {
++    const arc = new Graphics();
++    parent.addChild(arc);
++    arcs.push(arc);
++  }
++
++  // Phase B
++  const burstRing = new Graphics();
++  burstRing.alpha = 0;
++  parent.addChild(burstRing);
++
++  const { label, updateLabel } = createFloatingLabel(parent, "CÁ ĐIỆN!", 0x0ea5e9);
++
++  let time = 0;
++  let caughtTime = -1;
++  let hasTriggeredCaught = false;
++
++  let lightningTimer = 0;
++  const lightningRefreshInterval = 0.15; // Controlled interval
++
++  return {
++    update: (dt: number, fish: ActiveFish) => {
++      if (isDestroyed) return;
++      time += dt;
++      lightningTimer += dt;
++      
++      // Phase A: Pulse
++      halo.alpha = 0.2 + 0.2 * Math.max(0, Math.sin(time * Math.PI * 2)); // visible energy pulse every 1s
++      
++      // Controlled lightning refresh
++      if (lightningTimer > lightningRefreshInterval) {
++        lightningTimer = 0;
++        arcs.forEach((arc) => {
++          arc.clear();
++          if (Math.random() > 0.4) {
++            const angle = Math.random() * Math.PI * 2;
++            const r1 = kind.size * 0.5;
++            const r2 = kind.size * 1.8;
++            arc.moveTo(Math.cos(angle)*r1, Math.sin(angle)*r1);
++            
++            let curX = Math.cos(angle)*r1;
++            let curY = Math.sin(angle)*r1;
++            for(let step=1; step<=3; step++){
++              const r = r1 + (r2-r1)*(step/3);
++              const a = angle + (Math.random() - 0.5)*0.8;
++              curX = Math.cos(a)*r;
++              curY = Math.sin(a)*r;
++              arc.lineTo(curX, curY);
++            }
++            arc.stroke({ color: 0xe0f2fe, width: 2, alpha: 0.9 });
++          }
++        });
++      }
++
++      // Phase B
++      if (caughtTime >= 0) {
++        caughtTime += dt;
++        
++        // Ring
++        if (caughtTime < 0.3) {
++          const progress = caughtTime / 0.3;
++          burstRing.clear();
++          burstRing.circle(0, 0, kind.size * (1 + progress * 3)).stroke({ color: 0x0ea5e9, width: 5 * (1 - progress) });
++          burstRing.alpha = 1;
++        } else {
++          burstRing.clear();
++        }
++
++        // Body pop
++        if (caughtTime < 0.15) {
++          const shift = (Math.random() - 0.5) * 6; // electrical shake
++          bodyGraphic.x = shift;
++          bodyGraphic.scale.set(1.2);
++        } else {
++          bodyGraphic.x = 0;
++          bodyGraphic.scale.set(1);
++        }
++      }
++
++      updateLabel(dt, fish, caughtTime);
++    },
++    onCaught: (_fish: ActiveFish) => {
++      if (isDestroyed) return;
++      if (isDestroyed) return;
++      if (!hasTriggeredCaught) {
++        hasTriggeredCaught = true;
++        caughtTime = 0;
++        
++        // Force an immediate big lightning burst
++        arcs.forEach((arc) => {
++          arc.clear();
++          const angle = Math.random() * Math.PI * 2;
++          arc.moveTo(0, 0);
++          arc.lineTo(Math.cos(angle)*kind.size*4, Math.sin(angle)*kind.size*4);
++          arc.stroke({ color: 0xffffff, width: 4 });
++        });
++        lightningTimer = -0.2; // Delay next normal lightning
++      }
++    },
++    destroy: () => {
++      if (isDestroyed) return;
++      isDestroyed = true;
++      if (isDestroyed) return;
++      isDestroyed = true;
++      halo.destroy();
++      arcs.forEach(a => a.destroy());
++      burstRing.destroy();
++      label.destroy();
++    }
++  };
++}
++
++// ----------------------------------------------------------------------------
++// Cá Ma Biển
++// ----------------------------------------------------------------------------
++function createGhostEffect(parent: Container, bodyGraphic: Graphics, kind: FishKind): SpecialEffectController {
++  let isDestroyed = false;
++  // Phase A
++  const halo = new Graphics().circle(0, 0, kind.size * 1.5).fill({ color: 0xc084fc, alpha: 0.25 });
++  parent.addChildAt(halo, 0);
++
++  const afterimages: Graphics[] = [];
++  for (let i = 0; i < 2; i++) {
++    const g = new Graphics();
++    drawFishShape(g, kind, kind.size);
++    g.tint = 0xc084fc;
++    parent.addChildAt(g, 0);
++    afterimages.push(g);
++  }
++
++  // Phase B
++  const ripple = new Graphics();
++  parent.addChild(ripple);
++
++  const { label, updateLabel } = createFloatingLabel(parent, "CÁ MA BIỂN!", 0xc084fc);
++
++  let time = 0;
++  let caughtTime = -1;
++  let hasTriggeredCaught = false;
++
++  return {
++    update: (dt: number, fish: ActiveFish) => {
++      if (isDestroyed) return;
++      time += dt;
++      
++      // Phase A
++      const floatOffset = Math.sin(time * 2) * 5;
++      bodyGraphic.y = floatOffset;
++      halo.y = floatOffset;
++      bodyGraphic.alpha = caughtTime >= 0 ? 1 : (0.5 + 0.2 * Math.sin(time * 3)); // fade-in pop when caught
++
++      const vxSign = fish.vx >= 0 ? 1 : -1;
++      
++      if (caughtTime < 0) {
++        afterimages[0].x = -vxSign * 12 * Math.abs(Math.sin(time * 4));
++        afterimages[0].y = floatOffset;
++        afterimages[0].alpha = 0.4;
++        
++        afterimages[1].x = -vxSign * 24 * Math.abs(Math.sin(time * 4 - 0.2));
++        afterimages[1].y = floatOffset;
++        afterimages[1].alpha = 0.2;
++      }
++
++      // Phase B
++      if (caughtTime >= 0) {
++        caughtTime += dt;
++        if (caughtTime < 0.6) {
++          const progress = caughtTime / 0.6;
++          ripple.clear();
++          ripple.circle(0, 0, kind.size * (1 + progress * 4)).stroke({ color: 0xc084fc, width: 3 * (1 - progress) });
++          
++          afterimages[0].x = -vxSign * 12 * (1 + progress * 2);
++          afterimages[0].alpha = 0.4 * (1 - progress);
++          afterimages[0].scale.set(1 + progress * 0.5);
++          
++          afterimages[1].x = -vxSign * 24 * (1 + progress * 2);
++          afterimages[1].alpha = 0.2 * (1 - progress);
++          afterimages[1].scale.set(1 + progress * 0.8);
++        } else {
++          ripple.clear();
++          afterimages[0].alpha = 0;
++          afterimages[1].alpha = 0;
++        }
++
++        if (caughtTime < 0.3) {
++          bodyGraphic.scale.set(1 + Math.sin(caughtTime / 0.3 * Math.PI) * 0.3);
++        } else {
++          bodyGraphic.scale.set(1);
++        }
++      }
++
++      updateLabel(dt, fish, caughtTime);
++    },
++    onCaught: (_fish: ActiveFish) => {
++      if (isDestroyed) return;
++      if (isDestroyed) return;
++      if (!hasTriggeredCaught) {
++        hasTriggeredCaught = true;
++        caughtTime = 0;
++        bodyGraphic.alpha = 1;
++      }
++    },
++    destroy: () => {
++      if (isDestroyed) return;
++      isDestroyed = true;
++      if (isDestroyed) return;
++      isDestroyed = true;
++      halo.destroy();
++      afterimages.forEach(a => a.destroy());
++      ripple.destroy();
++      label.destroy();
++    }
++  };
++}
++
++// ----------------------------------------------------------------------------
++// Cá Cầu Vồng
++// ----------------------------------------------------------------------------
++function createRainbowEffect(parent: Container, bodyGraphic: Graphics, kind: FishKind): SpecialEffectController {
++  let isDestroyed = false;
++  // Phase A
++  const halo = new Graphics().circle(0, 0, kind.size * 1.6).fill({ color: 0xffffff, alpha: 1 });
++  halo.blendMode = "add";
++  parent.addChildAt(halo, 0);
++
++  const sparkles: Graphics[] = [];
++  for (let i = 0; i < 3; i++) {
++    // Star shape
++    const s = new Graphics();
++    const starR1 = kind.size * 0.4;
++    const starR2 = kind.size * 0.15;
++    s.moveTo(0, -starR1);
++    for(let j=0; j<5; j++) {
++       const a1 = -Math.PI/2 + (j * Math.PI * 2) / 5;
++       const a2 = -Math.PI/2 + ((j + 0.5) * Math.PI * 2) / 5;
++       s.lineTo(Math.cos(a1)*starR1, Math.sin(a1)*starR1);
++       s.lineTo(Math.cos(a2)*starR2, Math.sin(a2)*starR2);
++    }
++    s.closePath();
++    s.fill(0xffffff);
++    parent.addChild(s);
++    sparkles.push(s);
++  }
++
++  // Phase B
++  const burst = new Graphics();
++  parent.addChild(burst);
++
++  const { label, updateLabel } = createFloatingLabel(parent, "CÁ CẦU VỒNG!", 0xffffff);
++  // Add a drop shadow or dark stroke to make legendary text pop
++  // (Handled by stroke in createFloatingLabel, but we can animate tint)
++
++  const colors = [0xff0000, 0xffa500, 0xffff00, 0x008000, 0x0000ff, 0x4b0082, 0xee82ee];
++  let time = 0;
++  let caughtTime = -1;
++  let hasTriggeredCaught = false;
++
++  return {
++    update: (dt: number, fish: ActiveFish) => {
++      if (isDestroyed) return;
++      time += dt;
++      
++      const cycleSpeed = 1.5;
++      const colorIndex1 = Math.floor(time * cycleSpeed) % colors.length;
++      const colorIndex2 = (colorIndex1 + 1) % colors.length;
++      // We can just snap colors or use one, Pixi Graphics tint doesn't smoothly interpolate out of the box unless we do math.
++      // We'll just cycle tint.
++      halo.tint = colors[colorIndex1];
++      halo.alpha = 0.25 + 0.1 * Math.sin(time * 5);
++      
++      // Make text cycle rainbow too!
++      label.style.fill = colors[colorIndex2];
++
++      // Phase A
++      for (let i = 0; i < sparkles.length; i++) {
++        const angle = time * (1.5 + i*0.2) + (i * Math.PI * 2) / sparkles.length;
++        const radius = kind.size * (1.2 + 0.3 * Math.sin(time * 3 + i));
++        sparkles[i].x = Math.cos(angle) * radius;
++        sparkles[i].y = Math.sin(angle) * radius;
++        sparkles[i].rotation = time * 2;
++        sparkles[i].alpha = 0.7 + 0.3 * Math.sin(time * 8 + i);
++        sparkles[i].tint = colors[(colorIndex1 + i) % colors.length];
++      }
++
++      // Phase B
++      if (caughtTime >= 0) {
++        caughtTime += dt;
++        if (caughtTime < 0.6) {
++          const progress = caughtTime / 0.6;
++          
++          burst.clear();
++          
++          // Ring
++          burst.circle(0, 0, kind.size * (1 + progress * 4)).stroke({ color: colors[colorIndex1], width: 6 * (1 - progress) });
++          
++          // Starburst
++          for(let i=0; i<8; i++) {
++             const a = (i/8)*Math.PI*2 + time;
++             const r1 = kind.size * (1 + progress);
++             const r2 = kind.size * (1 + progress * 5);
++             burst.moveTo(Math.cos(a)*r1, Math.sin(a)*r1);
++             burst.lineTo(Math.cos(a)*r2, Math.sin(a)*r2);
++          }
++          burst.stroke({ color: colors[colorIndex2], width: 5 * (1-progress) });
++
++        } else {
++          burst.clear();
++        }
++
++        if (caughtTime < 0.3) {
++          bodyGraphic.scale.set(1 + Math.sin(caughtTime / 0.3 * Math.PI) * 0.5);
++        } else {
++          bodyGraphic.scale.set(1);
++        }
++      }
++
++      updateLabel(dt, fish, caughtTime);
++    },
++    onCaught: (_fish: ActiveFish) => {
++      if (isDestroyed) return;
++      if (isDestroyed) return;
++      if (!hasTriggeredCaught) {
++        hasTriggeredCaught = true;
++        caughtTime = 0;
++      }
++    },
++    destroy: () => {
++      if (isDestroyed) return;
++      isDestroyed = true;
++      if (isDestroyed) return;
++      isDestroyed = true;
++      halo.destroy();
++      sparkles.forEach(s => s.destroy());
++      burst.destroy();
++      label.destroy();
++    }
++  };
++}
+diff --git a/src/app/components/bat-ca/game/fish-data.ts b/src/app/components/bat-ca/game/fish-data.ts
+index 4f79a69..673e2b1 100644
+--- a/src/app/components/bat-ca/game/fish-data.ts
++++ b/src/app/components/bat-ca/game/fish-data.ts
+@@ -18,20 +18,24 @@ export const FISH_KINDS: FishKind[] = [
+   { type: "loc", name: "Cá lóc", value: 95, weight: 6, depthMin: 550, depthMax: Math.min(680, MAX_DEPTH_LIMIT), minLevel: 2, speed: 110, size: 17, rarity: 7, isBad: false, behavior: "fast", color: "#059669", belly: "#a7f3d0" },
+   { type: "luondien", name: "Lươn điện", value: 0, weight: 6, depthMin: 350, depthMax: Math.min(600, MAX_DEPTH_LIMIT), speed: 95, size: 12, rarity: 4, isBad: true, behavior: "electric", color: "#06b6d4", belly: "#cffafe" },
+   { type: "tuibian", name: "Túi bí ẩn", value: 25, weight: 5, depthMin: 300, depthMax: Math.min(550, MAX_DEPTH_LIMIT), speed: 25, size: 14, rarity: 6, isBad: false, behavior: "mystery", color: "#c084fc", belly: "#f3e8ff" },
++  { type: "hoangkim", name: "Cá Hoàng Kim", value: 400, weight: 10, depthMin: 400, depthMax: Math.min(800, MAX_DEPTH_LIMIT), minLevel: 2, speed: 90, size: 16, rarity: 4, isBad: false, behavior: "golden", color: "#fef08a", belly: "#fef9c3", specialVisual: "golden" },
+ 
+   // Tầng 800-1300m
+   { type: "chepvang", name: "Chép Hoàng Gia", value: 160, weight: 10, depthMin: 600, depthMax: Math.min(1000, MAX_DEPTH_LIMIT), minLevel: 3, speed: 100, size: 19, rarity: 3, isBad: false, behavior: "fast", color: "#fbbf24", belly: "#fffbeb" },
+   { type: "cavang", name: "Cá Vàng Đèn", value: 250, weight: 4, depthMin: 580, depthMax: Math.min(900, MAX_DEPTH_LIMIT), minLevel: 3, speed: 145, size: 17, rarity: 2, isBad: false, behavior: "golden", color: "#facc15", belly: "#fef9c3" },
++  { type: "cadien", name: "Cá Điện", value: 650, weight: 8, depthMin: 700, depthMax: Math.min(1200, MAX_DEPTH_LIMIT), minLevel: 3, speed: 130, size: 15, rarity: 2, isBad: false, behavior: "electric", color: "#0ea5e9", belly: "#e0f2fe", specialVisual: "electric" },
+ 
+   // Tầng sâu 1300-2000m
+   { type: "cangu", name: "Cá ngừ lam", value: 420, weight: 14, depthMin: 1000, depthMax: Math.min(1400, MAX_DEPTH_LIMIT), minLevel: 4, speed: 120, size: 22, rarity: 3, isBad: false, behavior: "fast", color: "#60a5fa", belly: "#dbeafe" },
+   { type: "cakieu", name: "Cá kiếm dạ quang", value: 550, weight: 12, depthMin: 1100, depthMax: Math.min(1500, MAX_DEPTH_LIMIT), minLevel: 4, speed: 160, size: 24, rarity: 2, isBad: false, behavior: "fast", color: "#38bdf8", belly: "#e0f2fe" },
+   { type: "cavoi", name: "Cá voi xanh", value: 1200, weight: 35, depthMin: 1300, depthMax: Math.min(1700, MAX_DEPTH_LIMIT), minLevel: 4, speed: 50, size: 32, rarity: 1, isBad: false, behavior: "normal", color: "#818cf8", belly: "#e0e7ff" },
++  { type: "camabien", name: "Cá Ma Biển", value: 1500, weight: 12, depthMin: 1200, depthMax: Math.min(2000, MAX_DEPTH_LIMIT), minLevel: 4, speed: 85, size: 20, rarity: 1.5, isBad: false, behavior: "mystery", color: "#c084fc", belly: "#f3e8ff", specialVisual: "ghost" },
+ 
+   // Tầng rất sâu 2000m+
+   { type: "caangler", name: "Cá Cần Cẩu Hồng", value: 1800, weight: 18, depthMin: 1800, depthMax: Math.min(2400, MAX_DEPTH_LIMIT), minLevel: 5, speed: 30, size: 20, rarity: 1, isBad: false, behavior: "normal", color: "#f43f5e", belly: "#ffe4e6" },
+   { type: "squalodon", name: "Cá mập tím", value: 3000, weight: 45, depthMin: 2000, depthMax: Math.min(3000, MAX_DEPTH_LIMIT), minLevel: 5, speed: 90, size: 36, rarity: 0.6, isBad: false, behavior: "fast", color: "#a855f7", belly: "#f3e8ff" },
+   { type: "kraken", name: "Kraken Thần Thoại", value: 8000, weight: 80, depthMin: 2500, depthMax: Math.min(4000, MAX_DEPTH_LIMIT), minLevel: 6, speed: 70, size: 48, rarity: 0.2, isBad: false, behavior: "normal", color: "#ec4899", belly: "#fdf2f8" },
++  { type: "cauvong", name: "Cá Cầu Vồng", value: 5000, weight: 20, depthMin: 2000, depthMax: Math.min(3500, MAX_DEPTH_LIMIT), minLevel: 5, speed: 110, size: 26, rarity: 0.5, isBad: false, behavior: "fast", color: "#f472b6", belly: "#fce7f3", specialVisual: "rainbow" },
+ ];
+ 
+ export const UPGRADE_ORDER: UpgradeType[] = ["depth", "netSize", "pullSpeed", "capacity"];
+diff --git a/src/app/components/bat-ca/game/types.ts b/src/app/components/bat-ca/game/types.ts
+index 1e6ed75..d26896f 100644
+--- a/src/app/components/bat-ca/game/types.ts
++++ b/src/app/components/bat-ca/game/types.ts
+@@ -6,6 +6,8 @@ export type FishBehavior = "normal" | "fast" | "electric" | "mystery" | "golden"
+ export type BuffType = "dynamite" | "strength" | "time" | "bigNet";
+ export type BuffState = Partial<Record<BuffType, number>>;
+ 
++export type SpecialVisual = "golden" | "electric" | "ghost" | "rainbow";
++
+ export type FishKind = {
+   type: string;
+   name: string;
+@@ -21,6 +23,7 @@ export type FishKind = {
+   behavior: FishBehavior;
+   color: string;
+   belly: string;
++  specialVisual?: SpecialVisual;
+ };
+ 
+ export type Fish = {

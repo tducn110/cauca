@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+.codegraph
+.vercel
+artifacts
+
+
+# Wink deployment evidence (local only)
+artifacts/

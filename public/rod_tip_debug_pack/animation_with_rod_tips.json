@@ -1,0 +1,83 @@
+{
+  "name": "duck_fishing_cast_v4",
+  "version": 4,
+  "canvas": {
+    "width": 480,
+    "height": 541
+  },
+  "frameCount": 6,
+  "frameFiles": [
+    "frame_01.png",
+    "frame_02.png",
+    "frame_03.png",
+    "frame_04.png",
+    "frame_05.png",
+    "frame_06.png"
+  ],
+  "castSequenceZeroBased": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "frameDurationsMs": [
+    85,
+    85,
+    85,
+    85,
+    85,
+    85
+  ],
+  "castDurationMs": 510,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.9426987060998152
+  },
+  "markers": {
+    "coordinateSpace": "source-png-top-left",
+    "measuredBeforeRuntimeMirror": true,
+    "rodTipByFrame": [
+      {
+        "x": 442,
+        "y": 334
+      },
+      {
+        "x": 457,
+        "y": 188
+      },
+      {
+        "x": 440,
+        "y": 169
+      },
+      {
+        "x": 433,
+        "y": 146
+      },
+      {
+        "x": 452,
+        "y": 310
+      },
+      {
+        "x": 439,
+        "y": 331
+      }
+    ]
+  },
+  "runtime": {
+    "sourceCharacterDirection": "right",
+    "recommendedMirrorXForCurrentDockComposition": true,
+    "boatBodyLockedInsideFrames": true,
+    "wholeCharacterCastRotationDeg": 0,
+    "idleBoatBobPx": 3,
+    "idleBoatTiltDeg": 1.2
+  },
+  "notes": [
+    "Every frame is RGBA 480x541.",
+    "Boat baseline is normalized around y=510; frame alpha bottoms vary by at most 1 px.",
+    "rodTipByFrame points are centers of the terminal rod guide in the original, unmirrored PNGs.",
+    "Apply mirror through the Pixi display transform; do not manually negate marker X a second time.",
+    "Use the visible hook/capturePoint as the other endpoint of the code-rendered fishing line."
+  ]
+}
