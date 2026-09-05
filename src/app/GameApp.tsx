@@ -2,6 +2,7 @@ import type { GameScreen } from "./hooks/useAppShell";
 import { LoadingScreen } from "./components/bat-ca/LoadingScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LeaderboardScreen } from "./screens/LeaderboardScreen";
+import type { LeaderboardEntry as WinkLeaderboardEntry } from "../integrations/wink/wink-bridge";
 
 interface Props {
   screen: GameScreen;
@@ -13,6 +14,8 @@ interface Props {
   bestScore: number;
   lastScore: number;
   isNewBest: boolean;
+  leaderboard: WinkLeaderboardEntry[];
+  currentEntryId: string | null;
   setMuted: (updater: (value: boolean) => boolean) => void;
   setShowDashboard: (value: boolean) => void;
   handleLoadingDone: () => void;
@@ -32,6 +35,8 @@ export function GameApp({
   muted,
   bestScore,
   lastScore,
+  leaderboard,
+  currentEntryId,
   setMuted,
   setShowDashboard,
   handleLoadingDone,
@@ -49,19 +54,21 @@ export function GameApp({
   }
 
   if (screen === "leaderboard") {
-    const mockLeaderboard = [
-      { rank: 1, name: "Nguyễn Văn A", score: 2500 },
-      { rank: 2, name: "Trần Thị B", score: 1800 },
-      { rank: 3, name: "Lê Văn C", score: 1200 },
-      { rank: 4, name: "Phạm Minh D", score: 890 },
-      { rank: 5, name: "Bạn", score: lastScore, isPlayer: true },
-    ].sort((a, b) => b.score - a.score).map((entry, i) => ({ ...entry, rank: i + 1 }));
+    const winkLeaderboard = leaderboard.map((entry) => ({
+      rank: entry.rank,
+      name: entry.displayName || "Anonymous",
+      score: entry.score,
+      isPlayer: entry.id === currentEntryId,
+    }));
+    const playerEntry = currentEntryId
+      ? leaderboard.find((entry) => entry.id === currentEntryId)
+      : null;
 
     return (
       <LeaderboardScreen
-        playerScore={lastScore}
-        playerRank={mockLeaderboard.findIndex((e) => e.isPlayer) + 1}
-        leaderboard={mockLeaderboard}
+        playerScore={playerEntry?.score ?? lastScore}
+        playerRank={playerEntry?.rank ?? 0}
+        leaderboard={winkLeaderboard}
         onBack={handleBackFromLeaderboard}
       />
     );

@@ -1,7 +1,8 @@
-import { Volume2, VolumeX, Music } from "lucide-react";
+import { Globe, Volume2, VolumeX, Music } from "lucide-react";
 import { useState } from "react";
 import { loadSave, saveProgress } from "../game/storage";
 import { gameAudio } from "../../../audio/audioManager";
+import { useTranslation } from "react-i18next";
 import "./fishing-dock-screen.css";
 
 interface Props {
@@ -12,6 +13,9 @@ interface Props {
 
 export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
   const [save, setSave] = useState(() => loadSave());
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage === "en" ? "en" : "vi";
+  const targetLanguage = language === "vi" ? "en" : "vi";
 
   const handleToggleSound = () => {
     onToggleMute();
@@ -40,12 +44,30 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
         {/* Header */}
         <div className="bg-white p-5 text-center relative border-b-2 border-slate-300">
           <h2 id="settings-modal-title" className="text-2xl font-black text-black m-0 uppercase tracking-wide">
-            Cài Đặt
+            {t("settings.title")}
           </h2>
         </div>
 
         {/* Body */}
         <div className="p-6 space-y-4 bg-white">
+          <div className="flex items-center justify-between p-4 rounded-[20px] bg-white border-2 border-slate-300 border-b-[3px]">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-[14px] bg-white text-black flex items-center justify-center border border-slate-300">
+                <Globe aria-hidden="true" />
+              </div>
+              <div>
+                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">{t("settings.language")}</h3>
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label={t("settings.language") + ": " + targetLanguage.toUpperCase()}
+              onClick={() => void i18n.changeLanguage(targetLanguage)}
+              className="w-[80px] py-2.5 rounded-xl font-black uppercase text-sm transition-all flex items-center justify-center border border-slate-300 border-b-[3px] bg-orange-500 text-white"
+            >
+              {targetLanguage.toUpperCase()}
+            </button>
+          </div>
           {/* Sound Toggle */}
           <div className="flex items-center justify-between p-4 rounded-[20px] bg-white border-2 border-slate-300 border-b-[3px]">
             <div className="flex items-center gap-3.5">
@@ -101,7 +123,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
             onClick={onClose}
             className="w-full mt-2 bg-yellow-400 text-black border-2 border-yellow-600 border-b-[3px] font-black text-xl py-3.5 rounded-[20px] uppercase tracking-wider transition-all active:border-b-[2px] active:translate-y-[2px]"
           >
-            Quay về
+            {t("common.back")}
           </button>
         </div>
       </section>

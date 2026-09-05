@@ -80,7 +80,6 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     runEarnings: 0,
   });
   const [lastCatchSummary, setLastCatchSummary] = useState<CatchSummary | null>(null);
-  const [isNewBest, setIsNewBest] = useState(false);
 
   const launchTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
@@ -229,8 +228,6 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   };
 
   const handleCatchComplete = (summary: CatchSummary) => {
-    const prevBest = progression.bestRunScore;
-
     try {
       progression.recordCatch(summary.earned, summary.caughtFishTypes);
     } catch (error) {
@@ -242,8 +239,6 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       });
     }
 
-    const newBest = summary.earned > 0 && summary.earned > prevBest;
-    setIsNewBest(newBest);
     setLastCatchSummary(summary);
     setPhase("result");
   };
@@ -320,7 +315,6 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       {(phase === "dock" || phase === "casting") && (
         <DockHud
           earnings={progression.earnings}
-          bestScore={progression.bestRunScore}
           giftRemainingMs={progression.giftRemainingMs}
           hooksLevel={progression.capacityLevel + 1}
           upgrades={upgrades}
@@ -355,7 +349,6 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       {phase === "result" && lastCatchSummary && (
         <CatchResultOverlay
           summary={lastCatchSummary}
-          isNewBest={isNewBest}
           onCollect={handleCollectResult}
         />
       )}

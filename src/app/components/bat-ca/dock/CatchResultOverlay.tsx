@@ -1,13 +1,12 @@
-import { Trophy, Sparkles, ArrowRight, Fish } from "lucide-react";
+import { Sparkles, ArrowRight, Fish } from "lucide-react";
 import { CatchSummary } from "./FishingDockCanvas";
 
 interface CatchResultOverlayProps {
   summary: CatchSummary;
-  isNewBest: boolean;
   onCollect: () => void;
 }
 
-export function CatchResultOverlay({ summary, isNewBest, onCollect }: CatchResultOverlayProps) {
+export function CatchResultOverlay({ summary, onCollect }: CatchResultOverlayProps) {
   return (
     <div className="fishing-dock-screen__backdrop">
       <section
@@ -26,15 +25,6 @@ export function CatchResultOverlay({ summary, isNewBest, onCollect }: CatchResul
 
         {/* Body */}
         <div className="p-6 space-y-5 bg-white flex flex-col items-center">
-          
-          {/* New Best Record Banner */}
-          {isNewBest && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400 border-2 border-yellow-600 border-b-2 text-black text-xs font-black uppercase tracking-wider animate-bounce -mt-2">
-              <Trophy className="w-4 h-4" strokeWidth={3} />
-              <span>Kỷ Lục Mới Khác Biệt!</span>
-            </div>
-          )}
-
           {/* Total Money Earned Display */}
           <div className="flex flex-col items-center gap-1 w-full">
             <span className="text-sm font-black uppercase tracking-widest text-gray-500">Tiền thu hoạch</span>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { Anchor, ArrowUp, Fish, Gift, Settings, Trophy } from "lucide-react";
+import { Anchor, ArrowUp, Fish, Gift, Settings } from "lucide-react";
 
 import type { DockUpgradeType } from "./progression";
 import "./fishing-dock.css";
@@ -20,7 +20,6 @@ export type DockUpgradeMap = Readonly<Record<DockUpgradeId, DockUpgradeState>>;
 
 export interface DockHudProps {
   earnings: number;
-  bestScore: number;
   giftRemainingMs: number;
   hooksLevel: number;
   upgrades: DockUpgradeMap;
@@ -108,7 +107,6 @@ function FloatingUpgradeArrow({ active }: { active: boolean }) {
 
 export function DockHud({
   earnings,
-  bestScore,
   giftRemainingMs,
   hooksLevel,
   upgrades,
@@ -148,16 +146,6 @@ export function DockHud({
         <strong className="fishing-dock-hud__earnings-value">
           {formatCurrency(earnings, currencySuffix)}
         </strong>
-      </div>
-
-      {/* Top Right Best Score Display */}
-      <div
-        className="fishing-dock-hud__best"
-        aria-label={`Kỷ lục ${formatCurrency(bestScore, currencySuffix)}`}
-      >
-        <span className="fishing-dock-hud__best-badge">BEST</span>
-        <Trophy aria-hidden="true" strokeWidth={2.8} />
-        <strong>{formatCurrency(bestScore, currencySuffix)}</strong>
       </div>
 
       {/* Left Rail Menu Buttons — Pill/Rectangular Buttons with overlay animations */}

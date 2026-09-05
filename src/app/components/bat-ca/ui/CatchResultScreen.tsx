@@ -1,4 +1,4 @@
-import { Trophy, Fish, Sparkles, ArrowRight, Coins } from "lucide-react";
+import { Fish, Sparkles, ArrowRight, Coins } from "lucide-react";
 import { FISH_KINDS } from "../game/fish-data";
 
 interface Props {
@@ -6,9 +6,8 @@ interface Props {
   totalFishCaught: number;
   caughtItems: { name: string; value: number; isBad: boolean }[];
   newlyDiscovered: string[];
-  isNewBest: boolean;
-  bestScore: number;
   onContinue: () => void;
+  disabled?: boolean;
 }
 
 export function CatchResultScreen({
@@ -16,22 +15,15 @@ export function CatchResultScreen({
   totalFishCaught,
   caughtItems,
   newlyDiscovered,
-  isNewBest,
-  bestScore,
   onContinue,
+  disabled = false,
 }: Props) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
       <div className="max-w-md w-full p-6 rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-2xl text-center flex flex-col items-center">
-        {isNewBest ? (
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 font-extrabold text-xs mb-2 animate-bounce">
-            <Trophy size={16} /> KỶ LỤC MỚI!
-          </div>
-        ) : (
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-2">
-            <Fish size={28} />
-          </div>
-        )}
+        <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center mb-2">
+          <Fish size={28} />
+        </div>
 
         <h2 className="text-2xl font-black text-slate-100 mb-1">
           KẾT QUẢ CHUYẾN CÂU
@@ -75,7 +67,6 @@ export function CatchResultScreen({
         <div className="w-full mb-5">
           <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-2">
             <span>Danh sách cá cắn câu ({totalFishCaught})</span>
-            <span>Kỷ lục: {bestScore.toLocaleString("vi-VN")}đ</span>
           </div>
 
           <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
@@ -106,6 +97,7 @@ export function CatchResultScreen({
         <button
           type="button"
           onClick={onContinue}
+          disabled={disabled}
           className="w-full py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all"
         >
           Tiếp tục quay về Dock <ArrowRight size={18} />

@@ -3,6 +3,7 @@ import App from "./app/App.tsx";
 import { AppErrorBoundary } from "./app/components/AppErrorBoundary";
 import { installGlobalRuntimeErrorHandlers } from "./app/observability/runtimeErrors";
 import "./styles/index.css";
+import "./i18n";
 
 const rootElement = document.getElementById("root");
 

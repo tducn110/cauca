@@ -3,6 +3,8 @@ import { GameCanvas } from "./GameCanvas";
 import { TutorialOverlay, GameplayHud, UpgradePanel, ShopPanel, RoundFeedback, LevelSummary } from "./ui";
 import { CatchResultScreen } from "./ui/CatchResultScreen";
 import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { showInterstitial } from "../../../integrations/ads/googleH5Ads";
 import "./batca.css";
 
 interface Props {
@@ -11,6 +13,7 @@ interface Props {
 }
 
 export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
+  const [adTransitionPending, setAdTransitionPending] = useState(false);
   const {
     game,
     mode,
@@ -40,6 +43,13 @@ export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
 
   const active = mode === "playing";
   const canUseDynamite = game.carrying.some((f) => f.kind.isBad) && (hud.activeBuffs.dynamite ?? 0) > 0;
+  const runTransitionAd = async (name: string, action: () => void) => {
+    if (adTransitionPending) return;
+    setAdTransitionPending(true);
+    await showInterstitial({ type: "next", name });
+    action();
+    setAdTransitionPending(false);
+  };
 
   return (
     <div className="batca-root">
@@ -80,13 +90,12 @@ export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
 
           {mode === "result" && lastFeedback && (
             <CatchResultScreen
+              disabled={adTransitionPending}
               earned={lastFeedback.earned}
               totalFishCaught={lastFeedback.items.filter((i) => !i.isBad).length}
               caughtItems={lastFeedback.items}
               newlyDiscovered={newlyDiscovered}
-              isNewBest={lastFeedback.earned > hud.bestMoney}
-              bestScore={hud.bestMoney}
-              onContinue={endGame}
+              onContinue={() => runTransitionAd("return_to_dock", endGame)}
             />
           )}
 
@@ -96,13 +105,14 @@ export function BatCaAoLang({ onEndGame, initialCastPower }: Props) {
 
           {mode === "levelSummary" && (
             <LevelSummary
+              transitionPending={adTransitionPending}
               levelDef={levelDef}
               levelScore={levelScore}
               levelFishCaught={levelFishCaught}
               totalScore={totalScore}
               hasAffordableUpgrade={hasAffordableUpgrade}
               nextLevelBuffs={game.nextLevelBuffs}
-              onNextLevel={startNextLevel}
+              onNextLevel={() => runTransitionAd("next_fishing_level", startNextLevel)}
               onUpgrade={openUpgrade}
               onShop={openShop}
               onEndGame={endGame}

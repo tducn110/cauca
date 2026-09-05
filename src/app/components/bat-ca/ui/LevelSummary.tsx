@@ -13,6 +13,7 @@ interface Props {
   onUpgrade: () => void;
   onShop: () => void;
   onEndGame: () => void;
+  transitionPending?: boolean;
 }
 
 export function LevelSummary({
@@ -26,6 +27,7 @@ export function LevelSummary({
   onUpgrade,
   onShop,
   onEndGame,
+  transitionPending = false,
 }: Props) {
   const hasBuffs = Object.keys(nextLevelBuffs).length > 0;
 
@@ -86,6 +88,7 @@ export function LevelSummary({
         <div className="flex flex-col gap-2">
           <button
             onClick={onNextLevel}
+            disabled={transitionPending}
             className="flex items-center justify-center gap-2 bg-gradient-to-b from-[#f08a48] to-orange-cta text-white font-extrabold py-3 rounded-full shadow-[0_4px_12px_rgba(232,116,50,0.4)] hover:shadow-[0_6px_16px_rgba(232,116,50,0.5)] transition-shadow"
           >
             Level {levelDef.level + 1}
