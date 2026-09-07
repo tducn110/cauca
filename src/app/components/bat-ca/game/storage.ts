@@ -172,7 +172,7 @@ export function normalizeSave(value: unknown, now = Date.now()): SaveData {
   const sound = typeof audioObj.sound === "boolean" ? audioObj.sound : true;
   const music = typeof audioObj.music === "boolean" ? audioObj.music : true;
 
-  const language: LanguageCode = parsed.language === "en" ? "en" : "vi";
+  const language: LanguageCode = parsed.language === "vi" ? "vi" : "en";
 
   return {
     version: SAVE_VERSION,
