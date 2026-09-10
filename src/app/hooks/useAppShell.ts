@@ -137,8 +137,12 @@ export function useAppShell() {
       try {
         if (winkGame.canSubmitScore) {
           const submission = await winkGame.submitFinalScore({ score: finalScore });
-          setBestScore(Math.max(submission.entry.score, submission.previousBest ?? 0));
-          setCurrentEntryId(submission.entry.id);
+          if (submission.entry) {
+            setBestScore(Math.max(submission.entry.score, submission.previousBest ?? 0));
+            setCurrentEntryId(submission.entry.id);
+          } else if (submission.previousBest !== null && submission.previousBest !== undefined) {
+            setBestScore(submission.previousBest);
+          }
           setIsNewBest(submission.isNewBest);
           const response = await winkGame.refreshLeaderboard({ limit: 100 });
           setLeaderboard(response.entries);

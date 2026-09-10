@@ -11,12 +11,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test && npm run build",
-    "sync:wink-bridge": "node scripts/sync-wink-bridge.mjs",
-    "verify:wink-bridge": "node scripts/verify-wink-bridge.mjs",
-    "verify:wink-config": "node scripts/verify-game-config.mjs",
-    "verify:docker-headers": "node scripts/verify-docker-headers.mjs",
-    "generate:wink-config": "node scripts/generate-wink-runtime-config.mjs"
+    "check": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "gsap": "^3.15.0",

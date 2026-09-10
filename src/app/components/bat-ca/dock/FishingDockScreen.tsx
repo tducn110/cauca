@@ -55,8 +55,9 @@ function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
 export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const progression = useDockProgression({ autoClaimOffline: false });
   const { claimOffline } = progression;
-  const screenRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLElement>(null);
   const [layout, setLayout] = useState(() => createDockLayout());
+  const [isRotateRequired, setRotateRequired] = useState(false);
   const [panel, setPanel] = useState<DockPanel>(null);
   const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [offlineEarningsData, setOfflineEarningsData] = useState<{ amount: number; eligibleMinutes: number } | null>(null);
@@ -103,13 +104,15 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   }, [claimOffline]);
 
   useLayoutEffect(() => {
-    const screen = screenRef.current;
-    if (!screen) return;
+    const stage = stageRef.current;
+    if (!stage) return;
 
     let frame = 0;
     const commitLayout = () => {
-      const { width, height } = screen.getBoundingClientRect();
-      const next = createDockLayout(width, height, readSafeAreaInsets(screen));
+      const { width, height } = stage.getBoundingClientRect();
+      const viewport = window.visualViewport;
+      setRotateRequired(Boolean(viewport && viewport.width > viewport.height && viewport.height < 600));
+      const next = createDockLayout(width, height, readSafeAreaInsets(stage));
       setLayout((current) => {
         const sameViewport = Math.abs(current.width - next.width) < 0.5
           && Math.abs(current.height - next.height) < 0.5;
@@ -130,7 +133,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       ? null
       : new ResizeObserver(scheduleLayout);
 
-    resizeObserver?.observe(screen);
+    resizeObserver?.observe(stage);
     window.addEventListener("resize", scheduleLayout);
     window.visualViewport?.addEventListener("resize", scheduleLayout);
     commitLayout();
@@ -287,17 +290,18 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
     setLastCatchSummary(null);
   };
 
-  const isInteractionLocked = phase !== "dock" || launchResult !== null || panel !== null || showOfflineModal || sceneError !== null;
+  const isInteractionLocked = phase !== "dock" || launchResult !== null || panel !== null || showOfflineModal || sceneError !== null || isRotateRequired;
   const isUnderwater = phase === "descending" || phase === "ascending";
 
   return (
-    <main
-      ref={screenRef}
-      className={`fishing-dock-screen${isUnderwater ? " is-fishing" : ""}`}
-      style={layoutStyle}
-      data-gameplay-axis-x={layout.gameplayAxisX.toFixed(2)}
-      data-waterline-y={layout.waterlineY.toFixed(2)}
-    >
+    <main className="fishing-dock-app">
+      <section
+        ref={stageRef}
+        className={`fishing-dock-screen${isUnderwater ? " is-fishing" : ""}`}
+        style={layoutStyle}
+        data-gameplay-axis-x={layout.gameplayAxisX.toFixed(2)}
+        data-waterline-y={layout.waterlineY.toFixed(2)}
+      >
       {/* Pixi Canvas Background Scene */}
       <FishingDockCanvas
         layout={layout}
@@ -341,6 +345,8 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
         <UnderwaterHud
           state={phase === "descending" ? "descending" : "ascending"}
           caughtCount={activeFishingInfo.caughtCount}
+          depthMeters={activeFishingInfo.depthMeters}
+          maxDepthMeters={activeFishingInfo.maxDepthMeters}
           layout={layout}
         />
       )}
@@ -400,6 +406,14 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
           onConfirm={(claimedAmount) => showNotice(`Đã nhận +${claimedAmount.toLocaleString("vi-VN")}đ`)}
         />
       )}
+      {isRotateRequired && (
+        <div className="fishing-dock-screen__rotate-required" role="alert">
+          <span aria-hidden="true">↻</span>
+          <strong>Hãy xoay dọc điện thoại</strong>
+          <p>Trải nghiệm câu cá được thiết kế cho màn hình dọc.</p>
+        </div>
+      )}
+      </section>
     </main>
   );
 }

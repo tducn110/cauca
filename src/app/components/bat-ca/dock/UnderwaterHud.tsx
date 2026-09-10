@@ -6,6 +6,8 @@ import type { FishingState } from "./FishingDockCanvas";
 interface UnderwaterHudProps {
   state: FishingState;
   caughtCount: number;
+  depthMeters?: number;
+  maxDepthMeters?: number;
   style?: CSSProperties;
   layout?: DockViewportLayout;
 }
