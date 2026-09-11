@@ -21,10 +21,12 @@ describe("fishing dock shared layout", () => {
     for (const center of centers) {
       expect(Math.abs(center - layout.gameplayAxisX)).toBeLessThanOrEqual(0.01);
     }
-    expect(layout.waterlineY / height).toBeGreaterThanOrEqual(0.43);
-    expect(layout.waterlineY / height).toBeLessThanOrEqual(0.48);
-    // Desktop viewports are "wide": the boat now anchors near the right bank at 0.88 of the column.
-    expect(layout.wide).toBe(true);
+    // In portrait-first mode, waterline is fixed at 0.235 ratio
+    expect(Math.abs(layout.waterlineY / height - 0.235)).toBeLessThanOrEqual(0.01);
+    
+    // Always false for portrait design
+    expect(layout.wide).toBe(false);
+    
     const boatRatioInWorld = (layout.boatAnchor.x - layout.worldLeft) / layout.worldWidth;
     expect(boatRatioInWorld).toBeGreaterThanOrEqual(0.6);
     expect(boatRatioInWorld).toBeLessThanOrEqual(0.93);
@@ -49,9 +51,7 @@ describe("fishing dock shared layout", () => {
       const gaugeBottom = layout.playGaugeCenter.y + layout.playGaugeSize / 2;
       const cardsBottom = layout.upgradePanelTop + layout.upgradeCardHeight;
 
-      expect(layout.upgradePanelTop - gaugeBottom).toBeGreaterThanOrEqual(
-        layout.microLandscape ? 6.5 : 11.5,
-      );
+      expect(layout.upgradePanelTop - gaugeBottom).toBeGreaterThanOrEqual(11.5);
       expect(cardsBottom).toBeLessThanOrEqual(height - layout.sceneSafeAreas.bottom + 0.01);
       expect(layout.upgradePanelWidth).toBeLessThanOrEqual(width - layout.sceneSafeAreas.left * 2 + 0.01);
     },
@@ -62,28 +62,25 @@ describe("fishing dock shared layout", () => {
     const gaugeBottom = layout.playGaugeCenter.y + layout.playGaugeSize / 2;
     const cardsBottom = layout.upgradePanelTop + layout.upgradeCardHeight;
 
-    expect(layout.upgradePanelTop - gaugeBottom).toBeGreaterThanOrEqual(6.5);
+    expect(layout.upgradePanelTop - gaugeBottom).toBeGreaterThanOrEqual(11.5);
     expect(cardsBottom).toBeLessThanOrEqual(303 - layout.sceneSafeAreas.bottom + 0.01);
     expect(layout.upgradePanelWidth).toBeLessThanOrEqual(
       844 - layout.sceneSafeAreas.left - layout.sceneSafeAreas.right + 0.01,
     );
   });
 
-  it("narrows gameplay into a centred water column on wide fullscreen viewports", () => {
+  it("always keeps wide as false since it is a portrait-first game", () => {
     const layout = createDockLayout(1920, 1080);
 
-    expect(layout.wide).toBe(true);
-    expect(layout.worldWidth).toBeLessThan(layout.width);
-    expect(layout.worldLeft).toBeGreaterThan(0);
-    // The water column stays centred: equal ground banks on both sides.
-    expect(Math.abs(layout.worldLeft + layout.worldWidth / 2 - layout.width / 2)).toBeLessThanOrEqual(0.01);
+    expect(layout.wide).toBe(false);
+    expect(layout.worldWidth).toBe(layout.width);
+    expect(layout.worldLeft).toBe(0);
+    
     // Gameplay anchors live inside the column.
     expect(layout.gameplayAxisX).toBeGreaterThan(layout.worldLeft);
     expect(layout.gameplayAxisX).toBeLessThan(layout.worldLeft + layout.worldWidth);
     expect(layout.boatAnchor.x).toBeGreaterThan(layout.worldLeft);
     expect(layout.boatAnchor.x).toBeLessThan(layout.worldLeft + layout.worldWidth);
-    // The fishing channel never spills over the ground banks.
-    expect(layout.channelWidth).toBeLessThanOrEqual(layout.worldWidth);
   });
 
   it.each([
