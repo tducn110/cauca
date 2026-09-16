@@ -25,6 +25,7 @@ import { AquariumPanel } from "./AquariumPanel";
 import { GiftModal } from "./GiftModal";
 import { OfflineEarningsModal } from "./OfflineEarningsModal";
 import { reportRuntimeError } from "../../../observability/runtimeErrors";
+import type { WinkRound } from "../../../../integrations/wink/client";
 import "./fishing-dock-screen.css";
 
 type DockPanel = "settings" | "hooks" | "aquarium" | "gift" | null;
@@ -32,9 +33,14 @@ type FishingPhase = "dock" | "casting" | "descending" | "ascending" | "result";
 
 type Props = {
   muted: boolean;
+  bestScore?: number;
+  paused?: boolean;
   onToggleMute: () => void;
   onPlay?: () => void;
   onShowStats?: () => void;
+  onShowLeaderboard?: () => void;
+  onStartRound?: () => WinkRound;
+  onCatchCompleteScore?: (summary: CatchSummary) => void;
 };
 
 function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
@@ -52,7 +58,15 @@ function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
   };
 }
 
-export function FishingDockScreen({ muted, onToggleMute }: Props) {
+export function FishingDockScreen({
+  muted,
+  bestScore = 0,
+  paused = false,
+  onToggleMute,
+  onShowLeaderboard,
+  onStartRound,
+  onCatchCompleteScore,
+}: Props) {
   const progression = useDockProgression({ autoClaimOffline: false });
   const { claimOffline } = progression;
   const stageRef = useRef<HTMLElement>(null);
@@ -219,6 +233,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const lockPower = (result: PowerLockResult) => {
     if (phase !== "dock" || panel !== null || showOfflineModal) return;
     setLaunchResult(result);
+    onStartRound?.();
     // Keep both calls inside the trusted pointer event for iOS Safari.
     gameAudio.play("click");
     gameAudio.play("cast");
@@ -233,6 +248,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
   const handleCatchComplete = (summary: CatchSummary) => {
     try {
       progression.recordCatch(summary.earned, summary.caughtFishTypes);
+      onCatchCompleteScore?.(summary);
     } catch (error) {
       reportRuntimeError(error, {
         area: "FishingDockScreen",
@@ -308,6 +324,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
         capacityLevel={progression.capacityLevel}
         depthLevel={progression.depthLevel}
         selectedHookId={progression.selectedHook}
+        paused={paused}
         onPowerLock={lockPower}
         onCatchComplete={handleCatchComplete}
         onStateChange={handleStateChange}
@@ -319,6 +336,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       {(phase === "dock" || phase === "casting") && (
         <DockHud
           earnings={progression.earnings}
+          bestScore={bestScore}
           giftRemainingMs={progression.giftRemainingMs}
           hooksLevel={progression.capacityLevel + 1}
           upgrades={upgrades}
@@ -334,6 +352,7 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
             gameAudio.play("click");
             setPanel("aquarium");
           }}
+          onOpenLeaderboard={onShowLeaderboard}
           onClaimGift={claimGift}
           onBuyUpgrade={buyUpgrade}
           interactionLocked={isInteractionLocked}
@@ -343,7 +362,6 @@ export function FishingDockScreen({ muted, onToggleMute }: Props) {
       {/* UNDERWATER HUD: Rendered ONLY during descending / ascending phases */}
       {isUnderwater && (
         <UnderwaterHud
-          state={phase === "descending" ? "descending" : "ascending"}
           caughtCount={activeFishingInfo.caughtCount}
           depthMeters={activeFishingInfo.depthMeters}
           maxDepthMeters={activeFishingInfo.maxDepthMeters}

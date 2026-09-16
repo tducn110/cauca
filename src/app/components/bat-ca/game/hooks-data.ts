@@ -29,7 +29,7 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#cbd5e1",
     accentColor: "#64748b",
     rarity: "common",
-    image: "/hook.png",
+    image: "/hook.webp",
   },
   {
     id: "fast",
@@ -43,7 +43,7 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#3b82f6",
     accentColor: "#1d4ed8",
     rarity: "rare",
-    image: "/hooks/hooksfast.png",
+    image: "/hooks/hooksfast.webp",
   },
   {
     id: "plus2",
@@ -58,7 +58,7 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#10b981",
     accentColor: "#047857",
     rarity: "epic",
-    image: "/hooks/hookplus2fish.png",
+    image: "/hooks/hookplus2fish.webp",
   },
   {
     id: "lucky_gold",
@@ -72,7 +72,7 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#f59e0b",
     accentColor: "#b45309",
     rarity: "legendary",
-    image: "/hooks/hookplusgold.png",
+    image: "/hooks/hookplusgold.webp",
   },
   {
     id: "coin",
@@ -87,7 +87,7 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#eab308",
     accentColor: "#a16207",
     rarity: "legendary",
-    image: "/hooks/hookcoin.png",
+    image: "/hooks/hookcoin.webp",
   },
   {
     id: "times",
@@ -102,7 +102,7 @@ export const HOOK_DEFINITIONS: HookDefinition[] = [
     color: "#6366f1",
     accentColor: "#4338ca",
     rarity: "legendary",
-    image: "/hooks/hooktimes.png",
+    image: "/hooks/hooktimes.webp",
   },
 ];
 

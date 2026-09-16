@@ -1,8 +1,9 @@
 import type { GameScreen } from "./hooks/useAppShell";
-import { LoadingScreen } from "./components/bat-ca/LoadingScreen";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LeaderboardScreen } from "./screens/LeaderboardScreen";
 import type { LeaderboardEntry as WinkLeaderboardEntry } from "../integrations/wink/wink-bridge";
+import type { WinkRound } from "../integrations/wink/client";
+import type { CatchSummary } from "./components/bat-ca/dock/FishingDockCanvas";
 
 interface Props {
   screen: GameScreen;
@@ -11,6 +12,7 @@ interface Props {
   loadingExiting: boolean;
   showDashboard: boolean;
   muted: boolean;
+  paused?: boolean;
   bestScore: number;
   lastScore: number;
   isNewBest: boolean;
@@ -24,35 +26,26 @@ interface Props {
   handleGoHome: () => void;
   handleShowLeaderboard: () => void;
   handleBackFromLeaderboard: () => void;
+  handleStartRound?: () => WinkRound;
+  handleCatchScore?: (summary: CatchSummary) => Promise<void>;
 }
 
 export function GameApp({
   screen,
-  loadingProgress,
-  resourcesReady,
-  loadingExiting,
   showDashboard,
   muted,
+  paused = false,
   bestScore,
   lastScore,
   leaderboard,
   currentEntryId,
   setMuted,
   setShowDashboard,
-  handleLoadingDone,
+  handleShowLeaderboard,
   handleBackFromLeaderboard,
+  handleStartRound,
+  handleCatchScore,
 }: Props) {
-  if (screen === "loading") {
-    return (
-      <LoadingScreen
-        progress={resourcesReady ? 100 : loadingProgress}
-        onDone={handleLoadingDone}
-        completeDelayMs={1150}
-        exiting={loadingExiting}
-      />
-    );
-  }
-
   if (screen === "leaderboard") {
     const winkLeaderboard = leaderboard.map((entry) => ({
       rank: entry.rank,
@@ -77,12 +70,16 @@ export function GameApp({
   return (
     <HomeScreen
       bestScore={bestScore}
+      lastScore={lastScore}
       muted={muted}
+      paused={paused}
       onToggleMute={() => setMuted((m) => !m)}
       onOpenDashboard={() => setShowDashboard(true)}
       showDashboard={showDashboard}
       onCloseDashboard={() => setShowDashboard(false)}
-      lastScore={lastScore}
+      onShowLeaderboard={handleShowLeaderboard}
+      onStartRound={handleStartRound}
+      onCatchCompleteScore={handleCatchScore}
     />
   );
 }

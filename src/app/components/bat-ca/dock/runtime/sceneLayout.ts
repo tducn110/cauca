@@ -210,7 +210,9 @@ const BANK_DEPTH_MARGIN = 340;
 
 /**
  * Draws one ground bank (Tiny Fishing style earthen wall) on the given side of
- * the playable water column. Only rendered in wide mode; cleared otherwise.
+ * the playable water column. In portrait mode the banks flank the central
+ * fishing channel; on wide layouts the same channel-relative geometry keeps
+ * the banks attached to the playable world.
  * The bank hangs from the waterline down past the maximum camera depth so the
  * water column stays flanked by earth during the whole descent.
  */
@@ -221,13 +223,14 @@ export function drawBank(
   totalDepthPx: number,
 ): void {
   graphics.clear();
-  if (!layout.wide) return;
-
   const top = layout.waterlineY - 4;
   const bottom = layout.waterlineY + totalDepthPx + BANK_DEPTH_MARGIN;
   const overdraw = 120;
   const outerX = side === "left" ? -overdraw : layout.width + overdraw;
-  const innerBaseX = side === "left" ? layout.worldLeft : layout.worldLeft + layout.worldWidth;
+  const channelHalf = layout.channelWidth / 2;
+  const innerBaseX = side === "left"
+    ? layout.gameplayAxisX - channelHalf
+    : layout.gameplayAxisX + channelHalf;
   // Slight organic wobble so the earthen wall is not a sterile straight edge.
   const seed = side === "left" ? 1.7 : 4.3;
   const innerXAt = (y: number) =>
@@ -389,4 +392,3 @@ export function createLayoutApplicator(
     }
   };
 }
-

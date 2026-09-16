@@ -19,7 +19,7 @@ export interface GiftItem {
 export const GIFT_BOARD_ITEMS: GiftItem[] = [
   {
     id: "gift-1",
-    name: "Túi Xu Vàng",
+    name: "Túi Xu",
     value: 500,
     rarity: "common",
     rarityLabel: "Phổ thông",
@@ -31,7 +31,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-2",
-    name: "Túi May Mắn",
+    name: "Túi May",
     value: 1200,
     rarity: "common",
     rarityLabel: "Phổ thông",
@@ -43,7 +43,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-3",
-    name: "Hộp Bí Mật",
+    name: "Hộp Bí",
     value: 2500,
     rarity: "uncommon",
     rarityLabel: "Khá",
@@ -55,7 +55,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-4",
-    name: "Rương Kim Cương",
+    name: "Rương Kim",
     value: 5000,
     rarity: "rare",
     rarityLabel: "Hiếm",
@@ -67,7 +67,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-5",
-    name: "Hũ Tiền Siêu Cấp",
+    name: "Hũ Tiền",
     value: 10000,
     rarity: "rare",
     rarityLabel: "Hiếm",
@@ -79,7 +79,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-6",
-    name: "Vé Tăng Tốc",
+    name: "Vé Tốc",
     value: 20000,
     rarity: "epic",
     rarityLabel: "Cực hiếm",
@@ -91,7 +91,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-7",
-    name: "Báu Vật Biển",
+    name: "Báu Vật",
     value: 35000,
     rarity: "epic",
     rarityLabel: "Cực hiếm",
@@ -103,7 +103,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-8",
-    name: "Kho Báu Hoàng Gia",
+    name: "Kho Báu",
     value: 60000,
     rarity: "legendary",
     rarityLabel: "Huyền thoại",
@@ -115,7 +115,7 @@ export const GIFT_BOARD_ITEMS: GiftItem[] = [
   },
   {
     id: "gift-9",
-    name: "SIÊU JACKPOT",
+    name: "Siêu Jackpot",
     value: 100000,
     rarity: "legendary",
     rarityLabel: "Thần thoại",
@@ -226,30 +226,30 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
   return (
     <div className="fishing-dock-screen__backdrop" onClick={!isSpinning ? onClose : undefined}>
       <div
-        className="w-[min(480px,96vw)] rounded-[32px] bg-white border-2 border-slate-300 border-b-[4px] overflow-hidden flex flex-col max-h-[calc(100dvh-30px)] shadow-2xl transition-all"
+        className="gift-modal w-[min(480px,96vw)] rounded-[28px] bg-white border-2 border-slate-300 border-b-[5px] overflow-hidden flex flex-col max-h-[calc(100dvh-30px)] shadow-2xl transition-all"
         role="dialog"
         aria-modal="true"
         aria-labelledby="gift-modal-title"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-white p-4 sm:p-5 text-center relative border-b-2 border-slate-300 flex-shrink-0">
+        <div className="gift-modal__header bg-white p-4 sm:p-5 text-center relative border-b-2 border-slate-300 flex-shrink-0">
           {/* Coin Wallet Badge */}
-          <div className="absolute top-1/2 -translate-y-1/2 left-3 sm:left-4 px-3 py-1.5 rounded-full bg-yellow-100 border border-yellow-400 border-b-[2px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
+          <div className="gift-modal__wallet absolute top-2 left-3 sm:left-4 px-3 py-1.5 rounded-full bg-yellow-100 border border-yellow-400 border-b-[2px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
             <span className="text-amber-500">
               <Coins size={16} strokeWidth={3} />
             </span>
             <span>{wallet.toLocaleString("vi-VN")}</span>
           </div>
 
-          <h2 id="gift-modal-title" className="text-lg sm:text-2xl font-black text-black m-0 uppercase tracking-wide">
+          <h2 id="gift-modal-title" className="gift-modal__title text-lg sm:text-2xl font-black text-black m-0 uppercase tracking-wide">
             Quà Tặng Ngẫu Nhiên
           </h2>
 
           <button
             type="button"
             disabled={isSpinning}
-            className="absolute top-1/2 -translate-y-1/2 right-3 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-2 active:border-b active:translate-y-[2px] disabled:opacity-50"
+            className="gift-modal__close absolute top-2 right-3 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-2 active:border-b active:translate-y-[2px] disabled:opacity-50"
             onClick={onClose}
             aria-label="Đóng"
           >
@@ -258,7 +258,7 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
         </div>
 
         {/* 3x3 Gift Board Grid */}
-        <div className="p-3.5 sm:p-5 grid grid-cols-3 gap-2.5 sm:gap-3.5 overflow-y-auto bg-slate-100 flex-1">
+        <div className="gift-modal__grid p-3.5 sm:p-5 grid grid-cols-3 gap-2.5 sm:gap-3.5 overflow-y-auto bg-slate-100 flex-1">
           {GIFT_BOARD_ITEMS.map((item, idx) => {
             const IconComp = item.icon;
             const isHighlighted = highlightedIndex === idx;
@@ -267,7 +267,7 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
             return (
               <div
                 key={item.id}
-                className={`relative aspect-square rounded-[22px] flex flex-col items-center justify-between p-2 sm:p-3 transition-all duration-150 border-2 sm:border-2 border-slate-300 select-none ${
+                className={`gift-modal__card relative aspect-square rounded-[18px] flex flex-col items-center justify-between p-2 sm:p-3 transition-all duration-150 border-2 sm:border-2 border-slate-300 select-none ${
                   isWinner
                     ? "bg-gradient-to-b from-yellow-200 to-amber-300 border-b-[4px] border-amber-600 scale-105 z-10 shadow-lg ring-4 ring-yellow-400 animate-pulse"
                     : isHighlighted
@@ -298,7 +298,7 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
                 </div>
 
                 {/* Gift Name */}
-                <span className="text-[10px] sm:text-[11.5px] font-black text-slate-800 text-center leading-tight uppercase tracking-tight line-clamp-1">
+                <span className="text-[10px] sm:text-[11.5px] font-black text-slate-800 text-center leading-tight uppercase tracking-tight">
                   {item.name}
                 </span>
 

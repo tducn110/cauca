@@ -1,6 +1,6 @@
 :root {
   --font-size: 16px;
-  --font-family: 'Be Vietnam Pro', sans-serif;
+  --font-family: 'Be Vietnam Pro', 'Arial', 'Helvetica Neue', sans-serif;
 
   /* Bộ Lạc Đậu Phộng — Vietnamese Countryside Palette */
   --primary: #e87432;          /* orange CTA */

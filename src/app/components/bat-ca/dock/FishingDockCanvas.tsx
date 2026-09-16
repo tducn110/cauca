@@ -20,6 +20,7 @@ type Props = {
   capacityLevel: number;
   depthLevel: number;
   selectedHookId: string;
+  paused?: boolean;
   onPowerLock?: (result: PowerLockResult) => void;
   onCatchComplete: (summary: CatchSummary) => void;
   onStateChange?: (state: FishingState, depthMeters: number, maxDepthMeters: number, capacity: number, caughtCount: number, runEarnings: number) => void;
@@ -32,6 +33,7 @@ export function FishingDockCanvas({
   capacityLevel,
   depthLevel,
   selectedHookId,
+  paused = false,
   onPowerLock,
   onCatchComplete,
   onStateChange,
@@ -46,6 +48,7 @@ export function FishingDockCanvas({
   const stateChangeRef = useRef(onStateChange);
   const sceneErrorRef = useRef(onSceneError);
   const disabledRef = useRef(disabled);
+  const pausedRef = useRef(paused);
   const capacityLevelRef = useRef(capacityLevel);
   const depthLevelRef = useRef(depthLevel);
   const selectedHookIdRef = useRef(selectedHookId);
@@ -56,6 +59,7 @@ export function FishingDockCanvas({
   stateChangeRef.current = onStateChange;
   sceneErrorRef.current = onSceneError;
   disabledRef.current = disabled;
+  pausedRef.current = paused;
   capacityLevelRef.current = capacityLevel;
   depthLevelRef.current = depthLevel;
   selectedHookIdRef.current = selectedHookId;
@@ -67,6 +71,10 @@ export function FishingDockCanvas({
   useEffect(() => {
     runtimeRef.current?.setDisabled(disabled);
   }, [disabled]);
+
+  useEffect(() => {
+    runtimeRef.current?.setPaused(paused);
+  }, [paused]);
 
   useEffect(() => {
     runtimeRef.current?.updateProgression(capacityLevel, depthLevel, selectedHookId);
@@ -117,6 +125,7 @@ export function FishingDockCanvas({
 
           runtime.applyLayout(layoutRef.current);
           runtime.setDisabled(disabledRef.current);
+          runtime.setPaused(pausedRef.current);
           runtime.updateProgression(
             capacityLevelRef.current,
             depthLevelRef.current,

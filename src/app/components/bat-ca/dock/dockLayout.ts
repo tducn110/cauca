@@ -10,7 +10,7 @@ const CHARACTER_SOURCE = { width: 480, height: 541, hookY: 337 } as const;
 
 export const DOCK_LAYOUT_RATIOS = {
   gameplayAxisX: 0.5,
-  waterlineY: 0.235,
+  waterlineY: 0.33,
   playGaugeCenterY: 0.515,
   upgradePanelTop: 0.67,
   channelWidth: 0.62,

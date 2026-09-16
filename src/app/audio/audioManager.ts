@@ -38,13 +38,22 @@ function reportAudioError(error: unknown, operation: string): void {
 
 class GameAudioManager {
   private muted = readBoolean(SOUND_STORE_KEY, false);
+  private hostMuted = false;
   private musicEnabled = readBoolean(MUSIC_STORE_KEY, true);
   private unlocked = false;
   private bgm: HTMLAudioElement | null = null;
   private readonly effects = new Map<AudioCue, HTMLAudioElement>();
 
   getMuted(): boolean {
+    return this.getEffectiveMuted();
+  }
+
+  isPlayerMuted(): boolean {
     return this.muted;
+  }
+
+  getEffectiveMuted(): boolean {
+    return this.muted || this.hostMuted;
   }
 
   getMusicEnabled(): boolean {
@@ -61,12 +70,25 @@ class GameAudioManager {
   setMuted(muted: boolean): void {
     this.muted = muted;
     writeBoolean(SOUND_STORE_KEY, muted);
-    if (muted) {
+    if (this.getEffectiveMuted()) {
       this.stopEffects();
+      this.bgm?.pause();
       return;
     }
     // This call is intentionally synchronous for Safari when invoked by a toggle.
     this.unlockFromGesture();
+  }
+
+  setHostMuted(hostMuted: boolean): void {
+    this.hostMuted = hostMuted;
+    if (this.getEffectiveMuted()) {
+      this.stopEffects();
+      this.bgm?.pause();
+      return;
+    }
+    if (this.unlocked && this.musicEnabled) {
+      this.startBgm();
+    }
   }
 
   setMusicEnabled(enabled: boolean): void {
@@ -84,14 +106,14 @@ class GameAudioManager {
    * Do not await play() here: awaiting anything before play() breaks iOS Safari's gesture chain.
    */
   unlockFromGesture(): void {
-    if (typeof window === "undefined" || this.muted) return;
+    if (typeof window === "undefined" || this.getEffectiveMuted()) return;
     this.ensureAudioElements();
     this.unlocked = true;
     if (this.musicEnabled) this.startBgm();
   }
 
   play(cue: AudioCue): void {
-    if (this.muted || typeof window === "undefined") return;
+    if (this.getEffectiveMuted() || typeof window === "undefined") return;
     const source = AUDIO_FILES[cue];
     if (source) {
       const effect = this.getEffect(cue, source);
@@ -114,7 +136,7 @@ class GameAudioManager {
       this.bgm?.pause();
       return;
     }
-    if (this.unlocked && this.musicEnabled && !this.muted) this.startBgm();
+    if (this.unlocked && this.musicEnabled && !this.getEffectiveMuted()) this.startBgm();
   }
 
   private ensureAudioElements(): void {
@@ -142,7 +164,7 @@ class GameAudioManager {
 
   private startBgm(): void {
     if (!this.bgm || this.bgm.ended) this.ensureAudioElements();
-    if (!this.bgm || !this.musicEnabled || this.muted) return;
+    if (!this.bgm || !this.musicEnabled || this.getEffectiveMuted()) return;
     const promise = this.bgm.play();
     promise.catch((error) => {
       // Keep unlocked false so the next real gesture retries on iOS Safari.

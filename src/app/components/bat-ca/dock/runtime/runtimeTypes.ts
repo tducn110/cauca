@@ -40,6 +40,7 @@ export type FloatingText = {
 export type DockSceneRuntime = {
   applyLayout: (layout: DockViewportLayout) => void;
   setDisabled: (disabled: boolean) => void;
+  setPaused: (paused: boolean) => void;
   updateProgression: (capacityLevel: number, depthLevel: number, hookId: string) => void;
   lockGauge: () => void;
 };

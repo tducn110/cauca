@@ -1,16 +1,16 @@
 import type { Texture } from "pixi.js";
 
 export const FISHING_DOCK_ASSETS = {
-  background: "/background.png",
+  background: "/background.webp",
   frames: Array.from(
     { length: 6 },
-    (_, index) => `/character/frame_${String(index + 1).padStart(2, "0")}.png`,
+    (_, index) => `/character/frame_${String(index + 1).padStart(2, "0")}.webp`,
   ),
-  dial: "/gauge/dial_base.png",
-  pointer: "/gauge/pointer.png",
+  dial: "/gauge/dial_base.webp",
+  pointer: "/gauge/pointer.webp",
   glow: "/gauge/max_glow.png",
-  hook: "/hook.png",
-  coin: "/coin.png",
+  hook: "/hook.webp",
+  coin: "/coin.webp",
 } as const;
 
 export const HOOK_ASSET_METADATA = {

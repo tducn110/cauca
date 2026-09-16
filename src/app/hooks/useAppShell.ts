@@ -5,6 +5,7 @@ import { recordDockActivity } from "../components/bat-ca/dock/progression";
 import { gameAudio, installAudioLifecycle } from "../audio/audioManager";
 import { winkGame, type WinkRound } from "../../integrations/wink/client";
 import type { LeaderboardEntry } from "../../integrations/wink/wink-bridge";
+import type { CatchSummary } from "../components/bat-ca/dock/FishingDockCanvas";
 
 const ACTIVITY_HEARTBEAT_MS = 30_000;
 
@@ -18,9 +19,16 @@ export function useAppShell() {
   const [resourcesReady, setResourcesReady] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [muted, setMutedState] = useState(() => gameAudio.getMuted());
+  const [paused, setPaused] = useState(false);
   const [loadingExiting, setLoadingExiting] = useState(false);
   const loadingDoneTimerRef = useRef<number | null>(null);
-  const [bestScore, setBestScore] = useState(0);
+  const [bestScore, setBestScore] = useState(() => {
+    try {
+      return loadSave().bestRunScore || 0;
+    } catch {
+      return 0;
+    }
+  });
   const [lastScore, setLastScore] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -37,16 +45,33 @@ export function useAppShell() {
     });
     const cleanupAudio = installAudioLifecycle();
     const cleanupWink = winkGame.bindLifecycle({
-      onMute: () => setMutedState(true),
-      onUnmute: () => setMutedState(false),
-      onPause: () => { gameAudio.setPageHidden(true); },
-      onResume: () => { gameAudio.setPageHidden(false); }
+      onMute: () => {
+        gameAudio.setHostMuted(true);
+        setMutedState(gameAudio.getEffectiveMuted());
+      },
+      onUnmute: () => {
+        gameAudio.setHostMuted(false);
+        setMutedState(gameAudio.getEffectiveMuted());
+      },
+      onPause: () => {
+        gameAudio.setPageHidden(true);
+        setPaused(true);
+      },
+      onResume: () => {
+        gameAudio.setPageHidden(false);
+        setPaused(false);
+      },
     });
     const stopObserve = winkGame.observe((state) => {
       if (state.phase === "ready_anonymous" || state.phase === "ready_authenticated") {
         void winkGame.refreshLeaderboard({ limit: 100 }).then((response) => {
           setLeaderboard(response.entries);
         }).catch(console.error);
+        void winkGame.getPersonalBest().then((pb) => {
+          if (pb) {
+            setBestScore((prev) => Math.max(prev, pb.score));
+          }
+        }).catch(() => {});
       }
     });
     
@@ -180,7 +205,7 @@ export function useAppShell() {
       const current = currentEntryId
         ? response.entries.find((entry) => entry.id === currentEntryId)
         : null;
-      if (current) setBestScore(current.score);
+      if (current) setBestScore((prev) => Math.max(prev, current.score));
     }).catch(console.error);
     setScreen("leaderboard");
   }, [currentEntryId]);
@@ -194,6 +219,40 @@ export function useAppShell() {
     }
   }, [endGameData]);
 
+  const handleStartRound = useCallback((): WinkRound => {
+    const round = winkGame.startRound();
+    activeRoundRef.current = round;
+    return round;
+  }, []);
+
+  const handleCatchScore = useCallback(async (summary: CatchSummary) => {
+    const finalScore = Math.max(0, Math.round(summary.earned));
+    const round = activeRoundRef.current;
+    setLastScore(finalScore);
+    setBestScore((prev) => Math.max(prev, finalScore));
+    if (round) {
+      try {
+        if (winkGame.canSubmitScore) {
+          const submission = await winkGame.submitFinalScore({ score: finalScore });
+          if (submission.entry) {
+            setBestScore((prev) => Math.max(prev, submission.entry!.score, submission.previousBest ?? 0));
+            setCurrentEntryId(submission.entry.id);
+          } else if (submission.previousBest !== null && submission.previousBest !== undefined) {
+            setBestScore((prev) => Math.max(prev, submission.previousBest!));
+          }
+          setIsNewBest(submission.isNewBest);
+          const response = await winkGame.refreshLeaderboard({ limit: 100 });
+          setLeaderboard(response.entries);
+        }
+      } catch (error) {
+        console.error("[Wink] score submission failed", error);
+      } finally {
+        winkGame.completeRound(round);
+        activeRoundRef.current = null;
+      }
+    }
+  }, []);
+
   return {
     screen,
     loadingProgress,
@@ -201,6 +260,7 @@ export function useAppShell() {
     loadingExiting,
     showDashboard,
     muted,
+    paused,
     bestScore,
     lastScore,
     isNewBest,
@@ -216,5 +276,7 @@ export function useAppShell() {
     handleGoHome,
     handleShowLeaderboard,
     handleBackFromLeaderboard,
+    handleStartRound,
+    handleCatchScore,
   };
 }

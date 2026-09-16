@@ -29,14 +29,14 @@ export function AquariumPanel({ onClose }: Props) {
   return (
     <div className="fishing-dock-screen__backdrop" onClick={onClose}>
       <section
-        className="w-full max-w-3xl rounded-[32px] bg-white border-2 border-slate-300 border-b-[4px] overflow-hidden flex flex-col max-h-[calc(100dvh-40px)]"
+        className="aquarium-modal w-full max-w-3xl rounded-[28px] bg-white border-2 border-slate-300 border-b-[5px] overflow-hidden flex flex-col max-h-[calc(100dvh-40px)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="aquarium-panel-title"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-white p-5 text-center relative border-b-2 border-slate-300 flex-shrink-0">
+        <div className="aquarium-modal__header bg-white p-5 text-center relative border-b-2 border-slate-300 flex-shrink-0">
           <div className="flex items-center gap-2 justify-center">
             <h2 id="aquarium-panel-title" className="text-2xl font-black text-black m-0 uppercase tracking-wide">
               Thủy Cung Ao Làng
@@ -57,7 +57,7 @@ export function AquariumPanel({ onClose }: Props) {
         </div>
 
         {/* Progress Bar */}
-        <div className="m-5 mb-0 p-4 rounded-[20px] bg-white border-2 border-slate-300 border-b-[3px] flex-shrink-0">
+        <div className="aquarium-modal__progress m-5 mb-0 p-4 rounded-[18px] bg-white border-2 border-slate-300 border-b-[3px] flex-shrink-0">
           <div className="flex items-center justify-between text-xs font-black mb-2 uppercase">
             <span className="text-black flex items-center gap-1.5">
               <Sparkles size={16} className="text-orange-500" strokeWidth={3} /> Đã phát hiện
@@ -82,7 +82,7 @@ export function AquariumPanel({ onClose }: Props) {
             return (
               <div
                 key={fish.type}
-                className={`p-3.5 rounded-2xl border border-slate-300 border-b-[3px] transition-all flex flex-col justify-between ${
+                className={`aquarium-modal__card p-3.5 rounded-2xl border border-slate-300 border-b-[3px] transition-all flex flex-col justify-between ${
                   isDiscovered ? "bg-white" : "bg-gray-100 opacity-70"
                 }`}
               >

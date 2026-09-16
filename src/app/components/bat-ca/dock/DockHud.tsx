@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { Anchor, ArrowUp, Fish, Gift, Settings } from "lucide-react";
+import { Anchor, ArrowUp, Fish, Gift, Settings, Trophy } from "lucide-react";
 
 import type { DockUpgradeType } from "./progression";
 import "./fishing-dock.css";
@@ -20,12 +20,14 @@ export type DockUpgradeMap = Readonly<Record<DockUpgradeId, DockUpgradeState>>;
 
 export interface DockHudProps {
   earnings: number;
+  bestScore?: number;
   giftRemainingMs: number;
   hooksLevel: number;
   upgrades: DockUpgradeMap;
   onOpenSettings: () => void;
   onOpenHooks: () => void;
   onOpenAquarium: () => void;
+  onOpenLeaderboard?: () => void;
   onClaimGift: () => void;
   onBuyUpgrade: (upgrade: DockUpgradeId) => void;
   interactionLocked?: boolean;
@@ -38,15 +40,15 @@ const UPGRADE_ORDER: readonly DockUpgradeId[] = ["capacity", "depth", "offlineRa
 const UPGRADE_META = {
   capacity: {
     label: "SỨC CHỨA",
-    renderIcon: () => <img src="/ui/upgrades/icon_addfish.png" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
+    renderIcon: () => <img src="/ui/upgrades/icon_addfish.webp" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
   depth: {
     label: "ĐỘ SÂU",
-    renderIcon: () => <img src="/ui/upgrades/icon_depth.png" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
+    renderIcon: () => <img src="/ui/upgrades/icon_depth.webp" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
   offlineRate: {
     label: "THU NHẬP RẢNH",
-    renderIcon: () => <img src="/ui/upgrades/iconMoney.png" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
+    renderIcon: () => <img src="/ui/upgrades/iconMoney.webp" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
 } as const;
 
@@ -107,12 +109,14 @@ function FloatingUpgradeArrow({ active }: { active: boolean }) {
 
 export function DockHud({
   earnings,
+  bestScore = 0,
   giftRemainingMs,
   hooksLevel,
   upgrades,
   onOpenSettings,
   onOpenHooks,
   onOpenAquarium,
+  onOpenLeaderboard,
   onClaimGift,
   onBuyUpgrade,
   interactionLocked = false,
@@ -147,6 +151,22 @@ export function DockHud({
           {formatCurrency(earnings, currencySuffix)}
         </strong>
       </div>
+
+      {/* Top Right Best Score / Leaderboard Button */}
+      {onOpenLeaderboard && (
+        <button
+          className="fishing-dock-hud__best fishing-dock-hud__pressable"
+          type="button"
+          onClick={onOpenLeaderboard}
+          disabled={interactionLocked}
+          aria-label={`Kỷ lục: ${compactNumber(bestScore)}. Mở bảng xếp hạng`}
+          title="Bảng xếp hạng"
+        >
+          <Trophy aria-hidden="true" strokeWidth={2.8} />
+          <strong>{compactNumber(bestScore)}</strong>
+          <span className="fishing-dock-hud__best-badge">KỶ LỤC</span>
+        </button>
+      )}
 
       {/* Left Rail Menu Buttons — Pill/Rectangular Buttons with overlay animations */}
       <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--left" aria-label="Đồ nghề và quà">

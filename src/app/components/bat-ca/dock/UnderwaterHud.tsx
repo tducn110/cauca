@@ -1,10 +1,8 @@
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties } from "react";
 import { Fish } from "lucide-react";
 import type { DockViewportLayout } from "./dockLayout";
-import type { FishingState } from "./FishingDockCanvas";
 
 interface UnderwaterHudProps {
-  state: FishingState;
   caughtCount: number;
   depthMeters?: number;
   maxDepthMeters?: number;
@@ -13,24 +11,10 @@ interface UnderwaterHudProps {
 }
 
 export function UnderwaterHud({
-  state,
   caughtCount,
   style,
   layout,
 }: UnderwaterHudProps) {
-  const [showTutorial, setShowTutorial] = useState(false);
-
-  useEffect(() => {
-    // Show tutorial only on ascending and for a short time
-    if (state === "ascending") {
-      setShowTutorial(true);
-      const timer = setTimeout(() => setShowTutorial(false), 3000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowTutorial(false);
-    }
-  }, [state]);
-
   // Align to the right edge of the water channel
   const rightOffset = layout && layout.worldWidth ? `${layout.width - (layout.worldLeft + layout.worldWidth) + 16}px` : "16px";
 
@@ -51,14 +35,6 @@ export function UnderwaterHud({
         </span>
       </div>
 
-      {/* Center Guidance Hint when ascending */}
-      {showTutorial && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 px-6 py-2.5 rounded-full bg-black/50 backdrop-blur-md border border-white/20 text-white text-sm font-black shadow-lg animate-bounce flex items-center gap-2">
-          <span>👈</span>
-          <span>Di chuyển để bắt cá</span>
-          <span>👉</span>
-        </div>
-      )}
     </div>
   );
 }

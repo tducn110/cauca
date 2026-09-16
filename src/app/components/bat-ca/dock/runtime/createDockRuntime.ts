@@ -593,10 +593,11 @@ export async function createDockRuntime(
                 if (progress > 0.8) {
                     if (!(fish as any).coinSprite) {
                        fish.bodyGraphic.clear();
-                       const cSprite = new Sprite(coinTexture);
-                       cSprite.anchor.set(0.5);
-                       cSprite.scale.set(0.06); 
-                       (fish as any).coinSprite = cSprite;
+                        const cSprite = new Sprite(coinTexture);
+                        cSprite.anchor.set(0.5);
+                        // Coin texture is right-sized to 128x128; 128 * 0.48 = 61.44px (preserving exact 1024 * 0.06 = 61.44px rendered diameter)
+                        cSprite.scale.set(0.48); 
+                        (fish as any).coinSprite = cSprite;
                        fish.node.addChild(cSprite);
                        fish.node.rotation = 0;
                     }
@@ -793,7 +794,20 @@ export async function createDockRuntime(
       }
     };
 
-    return { applyLayout, setDisabled, updateProgression, lockGauge, destroy: runtimeDestroy };
+    const setPaused = (paused: boolean) => {
+      if (destroyed || signal.canceled) return;
+      if (paused) {
+        if (app.ticker.started) {
+          app.ticker.stop();
+        }
+      } else {
+        if (!app.ticker.started) {
+          app.ticker.start();
+        }
+      }
+    };
+
+    return { applyLayout, setDisabled, setPaused, updateProgression, lockGauge, destroy: runtimeDestroy };
   } catch (error) {
     onFail(error, "init");
     destroy();

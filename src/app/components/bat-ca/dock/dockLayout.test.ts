@@ -21,8 +21,8 @@ describe("fishing dock shared layout", () => {
     for (const center of centers) {
       expect(Math.abs(center - layout.gameplayAxisX)).toBeLessThanOrEqual(0.01);
     }
-    // In portrait-first mode, waterline is fixed at 0.235 ratio
-    expect(Math.abs(layout.waterlineY / height - 0.235)).toBeLessThanOrEqual(0.01);
+    // In portrait-first mode, waterline is fixed at 0.33 ratio
+    expect(Math.abs(layout.waterlineY / height - 0.33)).toBeLessThanOrEqual(0.01);
     
     // Always false for portrait design
     expect(layout.wide).toBe(false);
