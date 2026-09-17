@@ -108,7 +108,7 @@ const resources = {
         title: "Kết quả",
         earnings: "Tiền thu hoạch",
         caught: "Bắt được <strong>{{count}}</strong> con cá",
-        collect: "Thu tiền & về bến",
+        collect: "Thu tiền",
       },
       aquarium: {
         title: "Thủy cung ao làng",
@@ -210,7 +210,7 @@ const resources = {
         title: "Results",
         earnings: "Catch earnings",
         caught: "Caught <strong>{{count}}</strong> fish",
-        collect: "Collect & return to dock",
+        collect: "Collect",
       },
       aquarium: {
         title: "Village Aquarium",
