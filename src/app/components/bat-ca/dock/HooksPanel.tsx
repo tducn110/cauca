@@ -1,5 +1,6 @@
 import { Sparkles, X, Coins } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { HOOK_DEFINITIONS, getHookDefinition, getHookUnlockPrice } from "../game/hooks-data";
 import { loadSave, selectHook, unlockRandomHook } from "../game/storage";
 import { gameAudio } from "../../../audio/audioManager";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function HooksPanel({ onClose, onNotice }: Props) {
+  const { t, i18n } = useTranslation();
   const [save, setSave] = useState(() => loadSave());
 
   const handleSelect = (hookId: string) => {
@@ -19,7 +21,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
       const updated = loadSave();
       setSave(updated);
       const hook = getHookDefinition(hookId);
-      onNotice(`Đã trang bị: ${hook.name}`);
+      onNotice(t("dock.equippedHook", "Đã trang bị: {{name}}", { name: hook.name }));
     }
   };
 
@@ -30,13 +32,13 @@ export function HooksPanel({ onClose, onNotice }: Props) {
       const updated = loadSave();
       setSave(updated);
       const hook = getHookDefinition(res.unlockedHookId);
-      onNotice(`Mở khóa thành công: ${hook.name}!`);
+      onNotice(t("dock.unlockedHook", "Mở khóa thành công: {{name}}!", { name: hook.name }));
     } else if (res.reason === "insufficient-funds") {
       gameAudio.play("click");
-      onNotice("Không đủ xu để mở khóa!");
+      onNotice(t("dock.notEnoughCoins", "Không đủ xu để mở khóa!"));
     } else if (res.reason === "all-unlocked") {
       gameAudio.play("click");
-      onNotice("Bạn đã sở hữu tất cả lưỡi câu!");
+      onNotice(t("dock.allHooksOwned", "Bạn đã sở hữu tất cả lưỡi câu!"));
     }
   };
 
@@ -57,18 +59,18 @@ export function HooksPanel({ onClose, onNotice }: Props) {
           {/* Coin Badge */}
           <div className="absolute top-1/2 -translate-y-1/2 left-4 px-3 py-1.5 rounded-full bg-yellow-100 border border-yellow-400 border-b-[2px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
             <span className="text-amber-500"><Coins size={16} strokeWidth={3} /></span>
-            <span>{save.money.toLocaleString("vi-VN")}</span>
+            <span>{save.money.toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}</span>
           </div>
 
           <h2 id="hooks-panel-title" className="text-xl sm:text-2xl font-black text-black m-0 uppercase tracking-wide">
-            Lưỡi Câu
+            {t("dock.hooks", "Lưỡi Câu")}
           </h2>
 
           <button
             type="button"
             className="absolute top-1/2 -translate-y-1/2 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-2 active:border-b active:translate-y-[2px]"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={t("common.close", "Đóng")}
           >
             <X size={20} strokeWidth={3.5} />
           </button>
@@ -84,7 +86,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
                 <div
                   key={`empty-${i}`}
                   className="relative aspect-[4/5] rounded-[20px] flex items-center justify-center p-3 transition-all border border-orange-200 bg-orange-100/50 border-b-[2px] opacity-80"
-                  title="Chưa ra mắt"
+                  title={t("dock.comingSoon", "Chưa ra mắt")}
                 >
                   <div className="w-12 h-12 flex items-center justify-center">
                     <span 
@@ -106,12 +108,12 @@ export function HooksPanel({ onClose, onNotice }: Props) {
 
             const getShortBuff = (id: string) => {
               switch (id) {
-                case "fast": return "+50% TỐC ĐỘ";
-                case "plus2": return "+2 SỨC CHỨA";
-                case "lucky_gold": return "+50% GIÁ TRỊ";
-                case "coin": return "+50% TIỀN AFK";
-                case "times": return "+4H TREO MÁY";
-                default: return "CƠ BẢN";
+                case "fast": return t("dock.buff_fast", "+50% TỐC ĐỘ");
+                case "plus2": return t("dock.buff_plus2", "+2 SỨC CHỨA");
+                case "lucky_gold": return t("dock.buff_lucky_gold", "+50% GIÁ TRỊ");
+                case "coin": return t("dock.buff_coin", "+50% TIỀN AFK");
+                case "times": return t("dock.buff_times", "+4H TREO MÁY");
+                default: return t("dock.buff_basic", "CƠ BẢN");
               }
             };
 
@@ -128,7 +130,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
                     ? "bg-white border-b-[2px] hover:bg-gray-100 active:border-b active:translate-y-[2px] cursor-pointer"
                     : "bg-gray-200 border-b-[2px] opacity-60 cursor-not-allowed"
                 }`}
-                title={isUnlocked ? hook.name : "Chưa mở khóa"}
+                title={isUnlocked ? hook.name : t("dock.notUnlocked", "Chưa mở khóa")}
               >
                 {/* Hook Name */}
                 <div className="w-full text-center mt-1 z-10">
@@ -163,7 +165,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
                    ) : (
                      <div className="mx-auto rounded-[8px] border border-slate-300 border-b-[2px] px-1.5 py-0.5 text-center flex items-center justify-center bg-slate-100">
                        <span className="text-[9px] sm:text-[10px] font-black text-slate-400">
-                         BÍ ẨN
+                         {t("dock.mystery", "BÍ ẨN")}
                        </span>
                      </div>
                    )}
@@ -191,8 +193,10 @@ export function HooksPanel({ onClose, onNotice }: Props) {
             <Coins size={20} strokeWidth={2.5} />
             <span>
               {allUnlocked 
-                ? "Đã mở khóa toàn bộ" 
-                : `Mở khóa ngẫu nhiên (${currentUnlockPrice.toLocaleString("vi-VN")}đ)`
+                ? t("dock.allUnlocked", "Đã mở khóa toàn bộ") 
+                : t("dock.randomUnlock", `Mở khóa ngẫu nhiên (${currentUnlockPrice.toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}${i18n.language === "vi" ? "đ" : ""})`, {
+                    price: `${currentUnlockPrice.toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}${i18n.language === "vi" ? "đ" : ""}`
+                  })
               }
             </span>
           </button>

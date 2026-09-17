@@ -1,5 +1,6 @@
 import { CSSProperties } from "react";
 import { Fish } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { DockViewportLayout } from "./dockLayout";
 
 interface UnderwaterHudProps {
@@ -15,6 +16,7 @@ export function UnderwaterHud({
   style,
   layout,
 }: UnderwaterHudProps) {
+  const { t } = useTranslation();
   // Align to the right edge of the water channel
   const rightOffset = layout && layout.worldWidth ? `${layout.width - (layout.worldLeft + layout.worldWidth) + 16}px` : "16px";
 
@@ -22,7 +24,7 @@ export function UnderwaterHud({
     <div
       className="fixed inset-0 pointer-events-none z-30 overflow-hidden"
       style={style}
-      aria-label="Giao diện lặn biển"
+      aria-label={t("dock.underwaterAria", "Giao diện lặn biển")}
     >
       {/* Top Right: Fish Count */}
       <div 

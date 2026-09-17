@@ -1,4 +1,5 @@
 import { Gift, Coins, Clock } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { gameAudio } from "../../../audio/audioManager";
 import "./fishing-dock-screen.css";
 
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onConfirm }: Props) {
+  const { t, i18n } = useTranslation();
   const handleConfirm = () => {
     gameAudio.play("sell");
     onConfirm(amount);
@@ -18,7 +20,12 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onConfi
 
   const hours = Math.floor(eligibleMinutes / 60);
   const mins = eligibleMinutes % 60;
-  const timeStr = hours > 0 ? `${hours} giờ ${mins} phút` : `${mins} phút`;
+  const timeStr = hours > 0
+    ? t("dock.timeHoursMins", "{{hours}} giờ {{mins}} phút", { hours, mins })
+    : t("dock.timeMins", "{{mins}} phút", { mins });
+
+  const locale = i18n.language === "vi" ? "vi-VN" : "en-US";
+  const currencySuffix = i18n.language === "vi" ? "đ" : "";
 
   return (
     <div className="fishing-dock-screen__backdrop" onClick={handleConfirm}>
@@ -32,7 +39,7 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onConfi
         {/* Header */}
         <div className="bg-white p-5 text-center relative border-b-2 border-slate-300">
           <h2 id="offline-modal-title" className="text-2xl font-black text-black m-0 uppercase tracking-wide">
-            Quà Vắng Mặt
+            {t("dock.offlineGifts", "Quà Vắng Mặt")}
           </h2>
         </div>
 
@@ -45,13 +52,13 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onConfi
           <div className="w-full">
             <p className="text-xs font-bold text-gray-500 uppercase flex items-center justify-center gap-1.5 mb-3">
               <Clock size={16} strokeWidth={3} className="text-black" />
-              Nghỉ ngơi <strong>{timeStr}</strong>
+              {t("dock.resting", "Nghỉ ngơi")} <strong>{timeStr}</strong>
             </p>
 
             <div className="w-full p-4 rounded-[20px] bg-yellow-400 border-2 border-yellow-600 border-b-[3px] flex items-center justify-center gap-2">
               <Coins size={28} strokeWidth={2.5} className="text-black" />
               <span className="text-3xl font-black text-black tracking-tighter">
-                +{amount.toLocaleString("vi-VN")}đ
+                +{amount.toLocaleString(locale)}{currencySuffix}
               </span>
             </div>
           </div>
@@ -61,7 +68,7 @@ export function OfflineEarningsModal({ amount, eligibleMinutes, onClose, onConfi
             onClick={handleConfirm}
             className="w-full mt-2 bg-orange-500 text-white border-2 border-orange-600 border-b-[3px] font-black text-xl py-3.5 rounded-[20px] uppercase tracking-wider transition-all active:border-b-[2px] active:translate-y-[2px]"
           >
-            Nhận Quà
+            {t("dock.claimGiftButton", "Nhận Quà")}
           </button>
         </div>
       </section>

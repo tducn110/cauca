@@ -1,5 +1,6 @@
 import { X, Trophy, BarChart3 } from "lucide-react";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function DashboardPanel({ open, onClose, bestScore, lastScore }: Props) {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -35,21 +37,21 @@ export function DashboardPanel({ open, onClose, bestScore, lastScore }: Props) {
           type="button"
           onClick={onClose}
           className="game-btn-close absolute top-3.5 right-3.5"
-          aria-label="Đóng bảng thành tích"
+          aria-label={t("dock.closeDashboard", "Đóng bảng thành tích")}
         >
           <X size={18} />
         </button>
 
         <div className="mb-6">
           <h2 className="m-0 text-ink-dark font-extrabold text-2xl">
-            Bảng Thành Tích
+            {t("dock.dashboardTitle", "Bảng Thành Tích")}
           </h2>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="bg-white border border-[rgba(138,125,101,0.25)] rounded-2xl p-3.5 flex flex-col items-start shadow-[0_4px_12px_rgba(42,36,24,0.04)]">
             <div className="flex justify-between items-center w-full mb-1.5">
-              <span className="text-[11px] font-extrabold uppercase text-pencil-gray tracking-[0.8px]">Kỷ lục cao nhất</span>
+              <span className="text-[11px] font-extrabold uppercase text-pencil-gray tracking-[0.8px]">{t("dock.highestRecord", "Kỷ lục cao nhất")}</span>
               <Trophy size={16} color="#f0b840" />
             </div>
             <div className="text-2xl font-extrabold text-ink-dark">{bestScore}đ</div>
@@ -57,7 +59,7 @@ export function DashboardPanel({ open, onClose, bestScore, lastScore }: Props) {
 
           <div className="bg-white border border-[rgba(138,125,101,0.25)] rounded-2xl p-3.5 flex flex-col items-start shadow-[0_4px_12px_rgba(42,36,24,0.04)]">
             <div className="flex justify-between items-center w-full mb-1.5">
-              <span className="text-[11px] font-extrabold uppercase text-pencil-gray tracking-[0.8px]">Lượt chơi cuối</span>
+              <span className="text-[11px] font-extrabold uppercase text-pencil-gray tracking-[0.8px]">{t("dock.lastGame", "Lượt chơi cuối")}</span>
               <BarChart3 size={16} color="#e87432" />
             </div>
             <div className="text-2xl font-extrabold text-ink-dark">{lastScore}đ</div>

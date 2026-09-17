@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { PowerLockResult } from "./FishingPowerGauge";
 import { FISHING_DOCK_ASSETS } from "./fishingAnimation";
 import { reportRuntimeError } from "../../../observability/runtimeErrors";
@@ -40,7 +41,8 @@ export function FishingDockCanvas({
   onSceneError,
   disabled = false,
 }: Props) {
-  const hostRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const runtimeRef = useRef<DockSceneRuntimeInstance | null>(null);
   const layoutRef = useRef(layout);
   const callbackRef = useRef(onPowerLock);
@@ -178,7 +180,7 @@ export function FishingDockCanvas({
           runtimeRef.current?.lockGauge();
         }}
         disabled={disabled}
-        aria-label="Khóa lực câu và bắt đầu chơi"
+        aria-label={t("dock.lockPower", "Khóa lực câu và bắt đầu chơi")}
       />
     </div>
   );

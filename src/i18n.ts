@@ -45,6 +45,12 @@ export const persistLanguage = (language: string): void => {
   }
 };
 
+export const syncDocumentLang = (language: string): void => {
+  if (typeof document === "undefined") return;
+  const normalized = language.split("-")[0];
+  document.documentElement.lang = isSupportedLanguage(normalized) ? normalized : "en";
+};
+
 const resources = {
   vi: {
     translation: {
@@ -91,6 +97,35 @@ const resources = {
         giftModalCountdown: "Bảng quà tặng - mở quà sau {{cooldown}}",
         quickUpgrades: "Nâng cấp nhanh",
         max: "MAX",
+        lockPower: "Khóa lực câu và bắt đầu chơi",
+        underwaterAria: "Giao diện lặn biển",
+        yourRank: "Vị trí của bạn",
+        highScore: "Điểm cao",
+        you: "Bạn",
+        closeDashboard: "Đóng bảng thành tích",
+        dashboardTitle: "Bảng Thành Tích",
+        highestRecord: "Kỷ lục cao nhất",
+        lastGame: "Lượt chơi cuối",
+        offlineGifts: "Quà Vắng Mặt",
+        resting: "Nghỉ ngơi",
+        claimGiftButton: "Nhận Quà",
+        comingSoon: "Chưa ra mắt",
+        allUnlocked: "Đã mở khóa toàn bộ",
+        randomUnlock: "Mở khóa ngẫu nhiên ({{price}}đ)",
+        equippedHook: "Đã trang bị: {{name}}",
+        unlockedHook: "Mở khóa thành công: {{name}}!",
+        notEnoughCoins: "Không đủ xu để mở khóa!",
+        allHooksOwned: "Bạn đã sở hữu tất cả lưỡi câu!",
+        mystery: "BÍ ẨN",
+        notUnlocked: "Chưa mở khóa",
+        buff_fast: "+50% TỐC ĐỘ",
+        buff_plus2: "+2 SỨC CHỨA",
+        buff_lucky_gold: "+50% GIÁ TRỊ",
+        buff_coin: "+50% TIỀN AFK",
+        buff_times: "+4H TREO MÁY",
+        buff_basic: "CƠ BẢN",
+        timeHoursMins: "{{hours}} giờ {{mins}} phút",
+        timeMins: "{{mins}} phút",
       },
       screen: {
         capacityUnit: "cá",
@@ -193,6 +228,35 @@ const resources = {
         giftModalCountdown: "Gift board - opens in {{cooldown}}",
         quickUpgrades: "Quick upgrades",
         max: "MAX",
+        lockPower: "Lock fishing power and cast",
+        underwaterAria: "Underwater interface",
+        yourRank: "Your Rank",
+        highScore: "High Score",
+        you: "You",
+        closeDashboard: "Close achievements",
+        dashboardTitle: "Achievements",
+        highestRecord: "Best Record",
+        lastGame: "Last Game",
+        offlineGifts: "Offline Earnings",
+        resting: "Resting for",
+        claimGiftButton: "Claim Gift",
+        comingSoon: "Coming Soon",
+        allUnlocked: "All hooks unlocked",
+        randomUnlock: "Unlock random ({{price}})",
+        equippedHook: "Equipped: {{name}}",
+        unlockedHook: "Unlocked: {{name}}!",
+        notEnoughCoins: "Not enough coins!",
+        allHooksOwned: "All hooks already owned!",
+        mystery: "MYSTERY",
+        notUnlocked: "Locked",
+        buff_fast: "+50% SPEED",
+        buff_plus2: "+2 CAPACITY",
+        buff_lucky_gold: "+50% VALUE",
+        buff_coin: "+50% IDLE COIN",
+        buff_times: "+4H IDLE TIME",
+        buff_basic: "BASIC",
+        timeHoursMins: "{{hours}}h {{mins}}m",
+        timeMins: "{{mins}}m",
       },
       screen: {
         capacityUnit: "fish",
@@ -252,15 +316,21 @@ const resources = {
   },
 } as const;
 
+const initialLanguage = getInitialLanguage();
+syncDocumentLang(initialLanguage);
+
 void i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: getInitialLanguage(),
+    lng: initialLanguage,
     supportedLngs: ["vi", "en"],
     fallbackLng: DEFAULT_LANGUAGE,
     interpolation: { escapeValue: false },
   });
-i18n.on("languageChanged", persistLanguage);
+i18n.on("languageChanged", (lang) => {
+  persistLanguage(lang);
+  syncDocumentLang(lang);
+});
 
 export default i18n;
