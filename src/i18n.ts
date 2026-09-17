@@ -1,20 +1,49 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
-const LANGUAGE_STORAGE_KEY = "fruit-slashing-language";
+export const LANGUAGE_STORAGE_KEY = "07-cauca-language";
+const LEGACY_STORAGE_KEYS = ["fruit-slashing-language"];
+
+export let isOnlineSession = false;
+export const setOnlineSession = (online: boolean): void => {
+  isOnlineSession = online;
+};
+
 type SupportedLanguage = "vi" | "en";
 const DEFAULT_LANGUAGE: SupportedLanguage = "en";
-const isSupportedLanguage = (value: string | null): value is SupportedLanguage => value === "vi" || value === "en";
-const getInitialLanguage = (): SupportedLanguage => {
+export const isSupportedLanguage = (value: string | null): value is SupportedLanguage =>
+  value === "vi" || value === "en";
+
+export const getInitialLanguage = (): SupportedLanguage => {
   if (typeof window === "undefined") return DEFAULT_LANGUAGE;
   try {
     const value = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return isSupportedLanguage(value) ? value : DEFAULT_LANGUAGE;
+    if (isSupportedLanguage(value)) return value;
+    for (const legacyKey of LEGACY_STORAGE_KEYS) {
+      const legacyValue = window.localStorage.getItem(legacyKey);
+      if (isSupportedLanguage(legacyValue)) {
+        try {
+          window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacyValue);
+        } catch {}
+        return legacyValue;
+      }
+    }
   } catch {
-    return DEFAULT_LANGUAGE;
+    // Storage read failure fallback
+  }
+  return DEFAULT_LANGUAGE;
+};
+
+export const persistLanguage = (language: string): void => {
+  if (isOnlineSession) return;
+  const normalized = language.split("-")[0];
+  if (typeof window === "undefined" || !isSupportedLanguage(normalized)) return;
+  try {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalized);
+  } catch {
+    // Optional persistence.
   }
 };
-const persistLanguage = (language: string): void => { const normalized = language.split("-")[0]; if (typeof window === "undefined" || !isSupportedLanguage(normalized)) return; try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalized); } catch { /* Optional persistence. */ } };
 
 const resources = {
   vi: {
@@ -34,6 +63,88 @@ const resources = {
         sfx: "Hiệu ứng âm thanh",
         on: "Bật",
         off: "Tắt",
+        sound: "Âm thanh",
+        soundDescription: "Hiệu ứng game",
+        musicDescription: "Giai điệu thư giãn",
+      },
+      dock: {
+        capacity: "SỨC CHỨA",
+        depth: "ĐỘ SÂU",
+        offlineRate: "THU NHẬP RẢNH",
+        earnings: "THU NHẬP",
+        bestScore: "KỶ LỤC",
+        hooks: "LƯỠI CÂU",
+        aquarium: "THỦY CUNG",
+        collection: "Bộ sưu tập",
+        level: "Cấp {{val}}",
+        claimGift: "NHẬN QUÀ",
+        gift: "QUÀ TẶNG",
+        ready: "Sẵn sàng",
+        openSettings: "Mở cài đặt",
+        openLeaderboard: "Kỷ lục: {{score}}. Mở bảng xếp hạng",
+        leaderboardTitle: "Bảng xếp hạng",
+        openHooks: "Mở lưỡi câu, cấp {{level}}",
+        openAquarium: "Mở Thủy cung",
+        dockAria: "Bến câu cá",
+        gearAndGifts: "Đồ nghề và quà",
+        giftModalOpen: "Mở bảng quà tặng ngẫu nhiên",
+        giftModalCountdown: "Bảng quà tặng - mở quà sau {{cooldown}}",
+        quickUpgrades: "Nâng cấp nhanh",
+        max: "MAX",
+      },
+      screen: {
+        capacityUnit: "cá",
+        perMinute: "đ/phút",
+        upgradeSuccess: "Nâng cấp thành công",
+        maxUpgrade: "Đã nâng tối đa",
+        insufficientFunds: "Chưa đủ tiền",
+        upgradeUnavailable: "Không thể nâng cấp lúc này",
+        reload: "Tải lại",
+        claimed: "Đã nhận +{{amount}}đ",
+        rotateTitle: "Hãy xoay dọc điện thoại",
+        rotateDescription: "Trải nghiệm câu cá được thiết kế cho màn hình dọc.",
+      },
+      results: {
+        title: "Kết quả",
+        earnings: "Tiền thu hoạch",
+        caught: "Bắt được <strong>{{count}}</strong> con cá",
+        collect: "Thu tiền & về bến",
+      },
+      aquarium: {
+        title: "Thủy cung ao làng",
+        passiveIncome: "Thu nhập thụ động: <strong>+{{amount}}đ/phút</strong>",
+        discovered: "Đã phát hiện",
+        trash: "Rác",
+        legendary: "Huyền thoại",
+        rare: "Hiếm",
+        common: "Thường",
+        unknown: "???",
+        objectOrTrash: "Vật thể / rác",
+        price: "Giá: {{amount}}đ",
+        depthRange: "Sâu: {{min}}m - {{max}}m",
+        depth: "Độ sâu: {{depth}}m+",
+      },
+      gift: {
+        title: "Quà tặng ngẫu nhiên",
+        close: "Đóng",
+        won: "Bạn đã trúng: {{gift}}!",
+        received: "Nhận ngay <strong>+{{amount}}đ</strong> vào tài khoản!",
+        spinning: "Đang quay...",
+        spin: "Quay ngẫu nhiên (miễn phí)",
+        opensAfter: "Quà mở sau {{time}}",
+        walletFull: "Ví đã đầy!",
+        congratulations: "Chúc mừng! Bạn nhận được {{gift}} (+{{amount}}đ)!",
+        items: {
+          "gift-1": { name: "Túi xu", rarity: "Phổ thông" },
+          "gift-2": { name: "Túi may", rarity: "Phổ thông" },
+          "gift-3": { name: "Hộp bí", rarity: "Khá" },
+          "gift-4": { name: "Rương kim", rarity: "Hiếm" },
+          "gift-5": { name: "Hũ tiền", rarity: "Hiếm" },
+          "gift-6": { name: "Vé tốc", rarity: "Cực hiếm" },
+          "gift-7": { name: "Báu vật", rarity: "Cực hiếm" },
+          "gift-8": { name: "Kho báu", rarity: "Huyền thoại" },
+          "gift-9": { name: "Siêu Jackpot", rarity: "Thần thoại" },
+        },
       },
     },
   },
@@ -54,6 +165,88 @@ const resources = {
         sfx: "Sound effects",
         on: "On",
         off: "Off",
+        sound: "Sound",
+        soundDescription: "Game sound effects",
+        musicDescription: "Relaxing soundtrack",
+      },
+      dock: {
+        capacity: "CAPACITY",
+        depth: "DEPTH",
+        offlineRate: "IDLE INCOME",
+        earnings: "EARNINGS",
+        bestScore: "RECORD",
+        hooks: "HOOKS",
+        aquarium: "AQUARIUM",
+        collection: "Collection",
+        level: "Lvl {{val}}",
+        claimGift: "CLAIM GIFT",
+        gift: "GIFT",
+        ready: "Ready",
+        openSettings: "Open settings",
+        openLeaderboard: "Record: {{score}}. Open leaderboard",
+        leaderboardTitle: "Leaderboard",
+        openHooks: "Open hooks, lvl {{level}}",
+        openAquarium: "Open Aquarium",
+        dockAria: "Fishing Dock",
+        gearAndGifts: "Gear and gifts",
+        giftModalOpen: "Open random gift",
+        giftModalCountdown: "Gift board - opens in {{cooldown}}",
+        quickUpgrades: "Quick upgrades",
+        max: "MAX",
+      },
+      screen: {
+        capacityUnit: "fish",
+        perMinute: "/min",
+        upgradeSuccess: "Upgrade complete",
+        maxUpgrade: "Already at maximum level",
+        insufficientFunds: "Not enough coins",
+        upgradeUnavailable: "Upgrade is unavailable right now",
+        reload: "Reload",
+        claimed: "Claimed +{{amount}}",
+        rotateTitle: "Rotate your phone upright",
+        rotateDescription: "This fishing experience is designed for portrait screens.",
+      },
+      results: {
+        title: "Results",
+        earnings: "Catch earnings",
+        caught: "Caught <strong>{{count}}</strong> fish",
+        collect: "Collect & return to dock",
+      },
+      aquarium: {
+        title: "Village Aquarium",
+        passiveIncome: "Idle income: <strong>+{{amount}}/min</strong>",
+        discovered: "Discovered",
+        trash: "Trash",
+        legendary: "Legendary",
+        rare: "Rare",
+        common: "Common",
+        unknown: "???",
+        objectOrTrash: "Object / trash",
+        price: "Value: {{amount}}",
+        depthRange: "Depth: {{min}}m - {{max}}m",
+        depth: "Depth: {{depth}}m+",
+      },
+      gift: {
+        title: "Random Gift",
+        close: "Close",
+        won: "You won: {{gift}}!",
+        received: "Added <strong>+{{amount}}</strong> to your account!",
+        spinning: "SPINNING...",
+        spin: "Spin for a random gift (free)",
+        opensAfter: "Gift opens in {{time}}",
+        walletFull: "Wallet is full!",
+        congratulations: "Congratulations! You received {{gift}} (+{{amount}})!",
+        items: {
+          "gift-1": { name: "Coin Bag", rarity: "Common" },
+          "gift-2": { name: "Lucky Bag", rarity: "Common" },
+          "gift-3": { name: "Mystery Box", rarity: "Uncommon" },
+          "gift-4": { name: "Gold Chest", rarity: "Rare" },
+          "gift-5": { name: "Money Jar", rarity: "Rare" },
+          "gift-6": { name: "Speed Pass", rarity: "Epic" },
+          "gift-7": { name: "Treasure", rarity: "Epic" },
+          "gift-8": { name: "Treasure Hoard", rarity: "Legendary" },
+          "gift-9": { name: "Super Jackpot", rarity: "Mythic" },
+        },
       },
     },
   },

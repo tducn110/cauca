@@ -1,5 +1,6 @@
 import { Fish, Sparkles, X, HelpCircle } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FISH_KINDS } from "../game/fish-data";
 import { loadSave } from "../game/storage";
 import "./fishing-dock-screen.css";
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export function AquariumPanel({ onClose }: Props) {
+  const { t, i18n } = useTranslation();
+  const isEnglish = (i18n.resolvedLanguage || i18n.language).startsWith("en");
   const [save] = useState(() => loadSave());
 
   const discoveredSet = new Set(save.discoveredFish);
@@ -20,10 +23,10 @@ export function AquariumPanel({ onClose }: Props) {
   const aquariumIncomePerMinute = discoveredCount * 2;
 
   const getRarityBadge = (rarity: number, isBad: boolean) => {
-    if (isBad) return { label: "Rác", color: "bg-gray-300 text-black" };
-    if (rarity < 2) return { label: "H.Thoại", color: "bg-yellow-400 text-black" };
-    if (rarity < 15) return { label: "Hiếm", color: "bg-purple-400 text-white" };
-    return { label: "Thường", color: "bg-blue-400 text-white" };
+    if (isBad) return { label: t("aquarium.trash"), color: "bg-gray-300 text-black" };
+    if (rarity < 2) return { label: t("aquarium.legendary"), color: "bg-yellow-400 text-black" };
+    if (rarity < 15) return { label: t("aquarium.rare"), color: "bg-purple-400 text-white" };
+    return { label: t("aquarium.common"), color: "bg-blue-400 text-white" };
   };
 
   return (
@@ -39,18 +42,18 @@ export function AquariumPanel({ onClose }: Props) {
         <div className="aquarium-modal__header bg-white p-5 text-center relative border-b-2 border-slate-300 flex-shrink-0">
           <div className="flex items-center gap-2 justify-center">
             <h2 id="aquarium-panel-title" className="text-2xl font-black text-black m-0 uppercase tracking-wide">
-              Thủy Cung Ao Làng
+              {t("aquarium.title")}
             </h2>
           </div>
           <p className="text-xs font-bold text-gray-500 mt-1.5 uppercase">
-            Thu nhập thụ động: <strong className="text-orange-500">+{aquariumIncomePerMinute}đ/phút</strong>
+            {isEnglish ? <>Idle income: <strong className="text-orange-500">+{aquariumIncomePerMinute}/min</strong></> : <>Thu nhập thụ động: <strong className="text-orange-500">+{aquariumIncomePerMinute}đ/phút</strong></>}
           </p>
 
           <button
             type="button"
             className="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-[2px] active:border-b active:translate-y-[2px]"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={t("common.close")}
           >
             <X size={20} strokeWidth={3.5} />
           </button>
@@ -60,7 +63,7 @@ export function AquariumPanel({ onClose }: Props) {
         <div className="aquarium-modal__progress m-5 mb-0 p-4 rounded-[18px] bg-white border-2 border-slate-300 border-b-[3px] flex-shrink-0">
           <div className="flex items-center justify-between text-xs font-black mb-2 uppercase">
             <span className="text-black flex items-center gap-1.5">
-              <Sparkles size={16} className="text-orange-500" strokeWidth={3} /> Đã phát hiện
+              <Sparkles size={16} className="text-orange-500" strokeWidth={3} /> {t("aquarium.discovered")}
             </span>
             <span className="text-black">{discoveredCount} / {totalCount} ({progressPercent}%)</span>
           </div>
@@ -104,22 +107,22 @@ export function AquariumPanel({ onClose }: Props) {
                   </div>
 
                   <h3 className="font-black text-sm text-black truncate">
-                    {isDiscovered ? fish.name : "???"}
+                    {isDiscovered ? fish.name : t("aquarium.unknown")}
                   </h3>
 
                   <p className="text-[11px] font-bold text-gray-500 mt-0.5">
                     {isDiscovered ? (
-                      fish.isBad ? "Vật thể / Rác" : `Giá: ${fish.value}đ`
+                      fish.isBad ? t("aquarium.objectOrTrash") : t("aquarium.price", { amount: fish.value })
                     ) : (
-                      `Sâu: ${fish.depthMin}m - ${fish.depthMax}m`
+                      t("aquarium.depthRange", { min: fish.depthMin, max: fish.depthMax })
                     )}
                   </p>
                 </div>
 
                 {isDiscovered && (
                   <div className="mt-3 pt-2 border-t border-dashed border-gray-300 text-[10px] text-gray-500 font-bold flex items-center justify-between">
-                    <span>Độ sâu: {fish.depthMin}m+</span>
-                    <span className="text-orange-500 font-black">+2đ/phút</span>
+                    <span>{t("aquarium.depth", { depth: fish.depthMin })}</span>
+                    <span className="text-orange-500 font-black">{isEnglish ? "+2/min" : "+2đ/phút"}</span>
                   </div>
                 )}
               </div>

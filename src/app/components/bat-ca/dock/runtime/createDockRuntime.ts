@@ -11,7 +11,7 @@ import type { CharacterNodes } from './characterRenderer';
 import { createFishPool, updateFishPositions, destroyFishNodes } from './fishRenderer';
 import { calculateFishPayout } from './payoutMath';
 import { createCaptureController, tickCaptureState } from './captureController';
-import { FishingPowerGauge } from '../FishingPowerGauge';
+import { FishingPowerGauge, targetDepthForPower } from '../FishingPowerGauge';
 import { FISH_KINDS } from '../../game/fish-data';
 import {
   CAPACITY_UPGRADE_DELTA,
@@ -289,7 +289,8 @@ export async function createDockRuntime(
         }
         if (state.fishingState === "idle") {
           const currentHookDef = getHookDefinition(callbacks.selectedHookIdRef.current);
-          state.targetDepthMeters = INITIAL_MAX_DEPTH + callbacks.depthLevelRef.current * DEPTH_UPGRADE_DELTA;
+          const maxDepthForLevel = INITIAL_MAX_DEPTH + callbacks.depthLevelRef.current * DEPTH_UPGRADE_DELTA;
+          state.targetDepthMeters = targetDepthForPower(maxDepthForLevel, result.power);
           state.maxCapacityCount = INITIAL_CAPACITY
             + callbacks.capacityLevelRef.current * CAPACITY_UPGRADE_DELTA
             + (currentHookDef.capacityBonus || 0);

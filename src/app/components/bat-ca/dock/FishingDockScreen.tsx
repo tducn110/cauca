@@ -26,6 +26,7 @@ import { GiftModal } from "./GiftModal";
 import { OfflineEarningsModal } from "./OfflineEarningsModal";
 import { reportRuntimeError } from "../../../observability/runtimeErrors";
 import type { WinkRound } from "../../../../integrations/wink/client";
+import { useTranslation } from "react-i18next";
 import "./fishing-dock-screen.css";
 
 type DockPanel = "settings" | "hooks" | "aquarium" | "gift" | null;
@@ -67,6 +68,8 @@ export function FishingDockScreen({
   onStartRound,
   onCatchCompleteScore,
 }: Props) {
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.resolvedLanguage || i18n.language).startsWith("en") ? "en-US" : "vi-VN";
   const progression = useDockProgression({ autoClaimOffline: false });
   const { claimOffline } = progression;
   const stageRef = useRef<HTMLElement>(null);
@@ -185,7 +188,7 @@ export function FishingDockScreen({
     capacity: {
       level: progression.capacityLevel,
       maxLevel: UPGRADE_META.capacity.maxLevel,
-      value: `${INITIAL_CAPACITY + progression.capacityLevel * CAPACITY_UPGRADE_DELTA} cá`,
+      value: `${INITIAL_CAPACITY + progression.capacityLevel * CAPACITY_UPGRADE_DELTA} ${t("screen.capacityUnit")}`,
       cost: progression.capacityCost,
       affordable: progression.capacityCost !== null && progression.wallet >= progression.capacityCost,
     },
@@ -199,7 +202,7 @@ export function FishingDockScreen({
     offlineRate: {
       level: progression.offlineRateLevel,
       maxLevel: OFFLINE_UPGRADE_COSTS.length,
-      value: `${progression.offlineRatePerMinute}đ/phút`,
+      value: `${progression.offlineRatePerMinute}${t("screen.perMinute")}`,
       cost: progression.offlineRateCost,
       affordable: progression.offlineRateCost !== null && progression.wallet >= progression.offlineRateCost,
     },
@@ -210,18 +213,18 @@ export function FishingDockScreen({
       const result = progression.purchaseUpgrade(type);
       if (result.purchased) {
         gameAudio.play("buy");
-        showNotice("Nâng cấp thành công");
+        showNotice(t("screen.upgradeSuccess"));
         return;
       }
       gameAudio.play("click");
-      showNotice(result.reason === "max-level" ? "Đã nâng tối đa" : "Chưa đủ tiền");
+      showNotice(result.reason === "max-level" ? t("screen.maxUpgrade") : t("screen.insufficientFunds"));
     } catch (error) {
       reportRuntimeError(error, {
         area: "FishingDockScreen",
         operation: `purchaseUpgrade:${type}`,
         fatal: false,
       });
-      showNotice("Không thể nâng cấp lúc này");
+      showNotice(t("screen.upgradeUnavailable"));
     }
   };
 
@@ -382,7 +385,7 @@ export function FishingDockScreen({
         <div className="fishing-dock-screen__scene-error" role="alert">
           {sceneError}
           <button type="button" onClick={() => window.location.reload()}>
-            Tải lại
+            {t("screen.reload")}
           </button>
         </div>
       )}
@@ -421,14 +424,14 @@ export function FishingDockScreen({
           amount={offlineEarningsData.amount}
           eligibleMinutes={offlineEarningsData.eligibleMinutes}
           onClose={() => setShowOfflineModal(false)}
-          onConfirm={(claimedAmount) => showNotice(`Đã nhận +${claimedAmount.toLocaleString("vi-VN")}đ`)}
+          onConfirm={(claimedAmount) => showNotice(t("screen.claimed", { amount: claimedAmount.toLocaleString(locale) }))}
         />
       )}
       {isRotateRequired && (
         <div className="fishing-dock-screen__rotate-required" role="alert">
           <span aria-hidden="true">↻</span>
-          <strong>Hãy xoay dọc điện thoại</strong>
-          <p>Trải nghiệm câu cá được thiết kế cho màn hình dọc.</p>
+          <strong>{t("screen.rotateTitle")}</strong>
+          <p>{t("screen.rotateDescription")}</p>
         </div>
       )}
       </section>

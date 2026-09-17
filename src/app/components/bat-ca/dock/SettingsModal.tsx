@@ -75,8 +75,8 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
                 {muted ? <VolumeX size={24} strokeWidth={3} /> : <Volume2 size={24} strokeWidth={3} />}
               </div>
               <div>
-                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">Âm thanh</h3>
-                <p className="text-[11.5px] font-bold text-gray-500 mt-1 leading-tight">Hiệu ứng game</p>
+                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">{t("settings.sound")}</h3>
+                <p className="text-[11.5px] font-bold text-gray-500 mt-1 leading-tight">{t("settings.soundDescription")}</p>
               </div>
             </div>
 
@@ -89,7 +89,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
                   : "bg-white text-black"
               }`}
             >
-              {!muted ? "Bật" : "Tắt"}
+              {!muted ? t("settings.on") : t("settings.off")}
             </button>
           </div>
 
@@ -100,8 +100,8 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
                 <Music size={24} strokeWidth={3} />
               </div>
               <div>
-                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">Nhạc nền</h3>
-                <p className="text-[11.5px] font-bold text-gray-500 mt-1 leading-tight">Giai điệu thư giãn</p>
+                <h3 className="font-black text-[16px] text-black leading-tight uppercase tracking-wide">{t("settings.music")}</h3>
+                <p className="text-[11.5px] font-bold text-gray-500 mt-1 leading-tight">{t("settings.musicDescription")}</p>
               </div>
             </div>
 
@@ -114,7 +114,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
                   : "bg-white text-black"
               }`}
             >
-              {save.audioSettings.music ? "Bật" : "Tắt"}
+              {save.audioSettings.music ? t("settings.on") : t("settings.off")}
             </button>
           </div>
 

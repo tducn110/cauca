@@ -1,5 +1,6 @@
 import { Sparkles, ArrowRight, Fish } from "lucide-react";
 import { CatchSummary } from "./FishingDockCanvas";
+import { useTranslation, Trans } from "react-i18next";
 
 interface CatchResultOverlayProps {
   summary: CatchSummary;
@@ -7,6 +8,8 @@ interface CatchResultOverlayProps {
 }
 
 export function CatchResultOverlay({ summary, onCollect }: CatchResultOverlayProps) {
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.resolvedLanguage || i18n.language).startsWith("en") ? "en-US" : "vi-VN";
   return (
     <div className="fishing-dock-screen__backdrop">
       <section
@@ -17,7 +20,7 @@ export function CatchResultOverlay({ summary, onCollect }: CatchResultOverlayPro
           <div className="flex justify-center items-center gap-2">
             <Sparkles className="w-5 h-5 text-orange-500" strokeWidth={3} />
             <h2 className="text-2xl font-black text-black m-0 uppercase tracking-wide">
-              Kết Quả
+              {t("results.title")}
             </h2>
             <Sparkles className="w-5 h-5 text-orange-500" strokeWidth={3} />
           </div>
@@ -27,10 +30,10 @@ export function CatchResultOverlay({ summary, onCollect }: CatchResultOverlayPro
         <div className="p-6 space-y-5 bg-white flex flex-col items-center">
           {/* Total Money Earned Display */}
           <div className="flex flex-col items-center gap-1 w-full">
-            <span className="text-sm font-black uppercase tracking-widest text-gray-500">Tiền thu hoạch</span>
+            <span className="text-sm font-black uppercase tracking-widest text-gray-500">{t("results.earnings")}</span>
             <div className="mt-1 w-full p-4 rounded-[20px] bg-yellow-400 border-2 border-yellow-600 border-b-[3px] flex items-center justify-center gap-2">
               <span className="text-4xl font-black text-black tracking-tighter">
-                +{summary.earned.toLocaleString("vi-VN")}đ
+                +{summary.earned.toLocaleString(locale)}{locale === "vi-VN" ? "đ" : ""}
               </span>
             </div>
           </div>
@@ -38,7 +41,7 @@ export function CatchResultOverlay({ summary, onCollect }: CatchResultOverlayPro
           {/* Caught Fish Count Pill */}
           <div className="flex items-center justify-center gap-2 w-full px-5 py-3 rounded-[20px] bg-gray-100 border-2 border-slate-200 border-b-2 text-black text-sm font-black uppercase">
             <Fish className="w-5 h-5 text-orange-500" strokeWidth={3} />
-            <span>Bắt được <strong className="text-orange-500 text-lg">{summary.caughtCount}</strong> con cá</span>
+            <span><Trans i18nKey="results.caught" values={{ count: summary.caughtCount }} components={{ strong: <strong className="text-orange-500 text-lg" /> }} /></span>
           </div>
 
           {/* Action Collect Button */}
@@ -47,7 +50,7 @@ export function CatchResultOverlay({ summary, onCollect }: CatchResultOverlayPro
             onClick={onCollect}
             className="w-full mt-2 py-4 rounded-[20px] bg-orange-500 text-white font-black text-xl uppercase tracking-wider border-2 border-orange-600 border-b-[3px] transition-all hover:bg-orange-600 active:border-b-2 active:translate-y-[2px] flex items-center justify-center gap-3 cursor-pointer"
           >
-            <span>Thu Tiền & Về Bến</span>
+            <span>{t("results.collect")}</span>
             <ArrowRight className="w-6 h-6" strokeWidth={3} />
           </button>
         </div>

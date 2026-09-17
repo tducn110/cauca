@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { winkGame } from '../client';
+import { winkGame, getWinkInitPromise, resetWinkInit } from '../client';
 import { gameAudio } from '../../../app/audio/audioManager';
 
 describe('Wink SDK v1 Adapter (07_cauca)', () => {
@@ -7,21 +7,23 @@ describe('Wink SDK v1 Adapter (07_cauca)', () => {
 
   beforeEach(() => {
     originalWink = (globalThis as any).Wink;
+    resetWinkInit();
   });
 
   afterEach(() => {
     (globalThis as any).Wink = originalWink;
   });
 
-  it('runs safely in standalone mode when window.Wink is absent', () => {
+  it('runs safely in standalone mode when window.Wink is absent', async () => {
     delete (globalThis as any).Wink;
     delete (globalThis as any).WinkBridge;
+    await getWinkInitPromise();
     const round = winkGame.startRound();
     expect(round.roundId).toBeDefined();
     expect(winkGame.completeRound(round)).toBe(true);
   });
 
-  it('connects to window.Wink SDK v1 and binds lifecycle', () => {
+  it('connects to window.Wink SDK v1 and binds lifecycle', async () => {
     const listeners: Record<string, Function> = {};
     const mockSdk = {
       init: vi.fn(async () => mockSdk),
@@ -38,6 +40,8 @@ describe('Wink SDK v1 Adapter (07_cauca)', () => {
 
     (globalThis as any).window = globalThis;
     (globalThis as any).Wink = mockSdk;
+
+    await getWinkInitPromise();
 
     const round = winkGame.startRound();
     expect(mockSdk.gameplayStart).toHaveBeenCalled();

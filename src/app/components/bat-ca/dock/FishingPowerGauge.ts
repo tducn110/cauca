@@ -9,6 +9,13 @@ export type PowerLockResult = {
   angle: number;
 };
 
+/** Converts the timing result into a cast depth while preserving the upgraded maximum. */
+export function targetDepthForPower(maxDepthMeters: number, power: number): number {
+  const safeMaximum = Math.max(1, Math.round(Number.isFinite(maxDepthMeters) ? maxDepthMeters : 1));
+  const safePower = Math.min(1, Math.max(0.2, Number.isFinite(power) ? power : 0.2));
+  return Math.max(1, Math.round(safeMaximum * safePower));
+}
+
 export function powerResultAtAngle(angle: number): PowerLockResult {
   const normalizedAngle = Math.min(Math.PI, Math.max(0, Number.isFinite(angle) ? angle : 0));
   const distance = Math.abs(normalizedAngle - Math.PI / 2);

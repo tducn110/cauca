@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Coins, X, Sparkles, Gift, Gem, Trophy, Crown, Zap, Award, Star } from "lucide-react";
 import { gameAudio } from "../../../audio/audioManager";
+import { Trans, useTranslation } from "react-i18next";
 import "./fishing-dock-screen.css";
 
 export interface GiftItem {
@@ -144,6 +145,8 @@ interface Props {
 }
 
 export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, wallet }: Props) {
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.resolvedLanguage || i18n.language).startsWith("en") ? "en-US" : "vi-VN";
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [winningIndex, setWinningIndex] = useState<number | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -202,9 +205,9 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
         // Claim reward in progression
         const result = onClaimReward(winnerItem.value);
         if (result.claimed) {
-          onNotice(`🎉 Chúc mừng! Bạn nhận được ${winnerItem.name} (+${winnerItem.value.toLocaleString("vi-VN")}đ)!`);
+          onNotice(`🎉 ${t("gift.congratulations", { gift: t(`gift.items.${winnerItem.id}.name`), amount: winnerItem.value.toLocaleString(locale) })}`);
         } else if (result.reason === "wallet-full") {
-          onNotice("Ví đã đầy!");
+          onNotice(t("gift.walletFull"));
         }
         return;
       }
@@ -239,11 +242,11 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
             <span className="text-amber-500">
               <Coins size={16} strokeWidth={3} />
             </span>
-            <span>{wallet.toLocaleString("vi-VN")}</span>
+            <span>{wallet.toLocaleString(locale)}</span>
           </div>
 
           <h2 id="gift-modal-title" className="gift-modal__title text-lg sm:text-2xl font-black text-black m-0 uppercase tracking-wide">
-            Quà Tặng Ngẫu Nhiên
+            {t("gift.title")}
           </h2>
 
           <button
@@ -251,7 +254,7 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
             disabled={isSpinning}
             className="gift-modal__close absolute top-2 right-3 sm:right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-2 active:border-b active:translate-y-[2px] disabled:opacity-50"
             onClick={onClose}
-            aria-label="Đóng"
+            aria-label={t("gift.close")}
           >
             <X size={20} strokeWidth={3.5} />
           </button>
@@ -278,7 +281,7 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
                 {/* Upper Rarity Badge */}
                 <div className="w-full flex items-center justify-between">
                   <span className={`text-[9px] sm:text-[10px] font-black uppercase px-2 py-0.5 rounded-full text-white ${item.badgeBg} border border-slate-200 border-b`}>
-                    {item.rarityLabel}
+                    {t(`gift.items.${item.id}.rarity`)}
                   </span>
                   {isWinner && (
                     <span className="animate-bounce text-amber-600">
@@ -299,12 +302,12 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
 
                 {/* Gift Name */}
                 <span className="text-[10px] sm:text-[11.5px] font-black text-slate-800 text-center leading-tight uppercase tracking-tight">
-                  {item.name}
+                  {t(`gift.items.${item.id}.name`)}
                 </span>
 
                 {/* Bottom Reward Pill - Matching current HUD buttons style */}
                 <div className="w-full mt-1 py-1 rounded-xl bg-orange-500 text-white font-black text-center text-xs sm:text-sm border border-orange-600 border-b-[2px] shadow-sm">
-                  +{item.value.toLocaleString("vi-VN")}đ
+                  +{item.value.toLocaleString(locale)}{locale === "vi-VN" ? "đ" : ""}
                 </div>
               </div>
             );
@@ -316,11 +319,11 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
           <div className="bg-yellow-300 border-t-2 border-b-2 border-yellow-600 p-3.5 text-center flex flex-col items-center gap-1 animate-fadeIn">
             <div className="flex items-center gap-2 text-black font-black text-sm sm:text-base uppercase">
               <Sparkles className="text-orange-600" size={20} strokeWidth={3} />
-              <span>BẠN ĐÃ TRÚNG: {wonGift.name}!</span>
+              <span>{t("gift.won", { gift: t(`gift.items.${wonGift.id}.name`) })}</span>
               <Sparkles className="text-orange-600" size={20} strokeWidth={3} />
             </div>
             <p className="text-xs sm:text-sm font-extrabold text-slate-900 m-0">
-              Nhận ngay <strong className="text-orange-600 font-black">+{wonGift.value.toLocaleString("vi-VN")}đ</strong> vào tài khoản!
+              <Trans i18nKey="gift.received" values={{ amount: `${wonGift.value.toLocaleString(locale)}${locale === "vi-VN" ? "đ" : ""}` }} components={{ strong: <strong className="text-orange-600 font-black" /> }} />
             </p>
           </div>
         )}
@@ -340,10 +343,10 @@ export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, w
             <Gift size={24} strokeWidth={3} />
             <span>
               {isSpinning
-                ? "ĐANG QUAY..."
+                ? t("gift.spinning")
                 : ready
-                ? "QUAY NGẪU NHIÊN (MIỄN PHÍ)"
-                : `QUÀ MỞ SAU ${formatCooldown(giftRemainingMs)}`}
+                ? t("gift.spin")
+                : t("gift.opensAfter", { time: formatCooldown(giftRemainingMs) })}
             </span>
           </button>
         </div>

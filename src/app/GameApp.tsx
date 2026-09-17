@@ -1,7 +1,7 @@
 import type { GameScreen } from "./hooks/useAppShell";
 import { HomeScreen } from "./screens/HomeScreen";
 import { LeaderboardScreen } from "./screens/LeaderboardScreen";
-import type { LeaderboardEntry as WinkLeaderboardEntry } from "../integrations/wink/wink-bridge";
+import type { LeaderboardEntry as WinkLeaderboardEntry } from "../integrations/wink/client";
 import type { WinkRound } from "../integrations/wink/client";
 import type { CatchSummary } from "./components/bat-ca/dock/FishingDockCanvas";
 

@@ -4,7 +4,7 @@ import { loadSave } from "../components/bat-ca/game/storage";
 import { recordDockActivity } from "../components/bat-ca/dock/progression";
 import { gameAudio, installAudioLifecycle } from "../audio/audioManager";
 import { winkGame, type WinkRound } from "../../integrations/wink/client";
-import type { LeaderboardEntry } from "../../integrations/wink/wink-bridge";
+import type { LeaderboardEntry } from "../../integrations/wink/client";
 import type { CatchSummary } from "../components/bat-ca/dock/FishingDockCanvas";
 
 const ACTIVITY_HEARTBEAT_MS = 30_000;

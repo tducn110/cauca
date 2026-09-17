@@ -168,14 +168,15 @@
   position: absolute;
   top: -8px;
   right: 12px;
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 6px;
   background: #ff6b00;
   color: #ffffff;
   font-size: 9px;
   font-weight: 1000;
-  line-height: 1;
+  line-height: 1.15;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .fishing-dock-hud__rail {
@@ -193,6 +194,7 @@
 .fishing-dock-hud__rail--right {
   right: 0;
   left: auto;
+  top: calc(var(--dock-safe-top, 25px) + 84px);
 }
 
 .fishing-dock-hud__rail-button {
@@ -315,6 +317,10 @@
   font-size: 8px;
   font-weight: 1000;
   color: var(--dock-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .fishing-dock-hud__upgrade-body {
@@ -360,10 +366,13 @@
   justify-content: center;
   flex: 1;
   color: #1e293b;
-  font-size: 17px;
+  font-size: clamp(13px, 1.2vw, 16px);
   font-weight: 1000;
-  line-height: 1;
+  line-height: 1.1;
   white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fishing-dock-hud__upgrade-price {

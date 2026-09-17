@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Anchor, ArrowUp, Fish, Gift, Settings, Trophy } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { DockUpgradeType } from "./progression";
 import "./fishing-dock.css";
@@ -39,37 +40,44 @@ const UPGRADE_ORDER: readonly DockUpgradeId[] = ["capacity", "depth", "offlineRa
 
 const UPGRADE_META = {
   capacity: {
-    label: "SỨC CHỨA",
+    iconKey: "capacity",
     renderIcon: () => <img src="/ui/upgrades/icon_addfish.webp" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
   depth: {
-    label: "ĐỘ SÂU",
+    iconKey: "depth",
     renderIcon: () => <img src="/ui/upgrades/icon_depth.webp" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
   offlineRate: {
-    label: "THU NHẬP RẢNH",
+    iconKey: "offlineRate",
     renderIcon: () => <img src="/ui/upgrades/iconMoney.webp" width={64} height={64} alt="" className="fishing-dock-hud__upgrade-main-img" />,
   },
 } as const;
 
-function compactNumber(value: number): string {
+function compactNumber(value: number, isEn: boolean): string {
   const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
-  const units = [
-    { threshold: 1_000_000_000, suffix: "Tỷ" },
-    { threshold: 1_000_000, suffix: "Tr" },
-    { threshold: 1_000, suffix: "K" },
-  ] as const;
+  const units = isEn
+    ? ([
+        { threshold: 1_000_000_000, suffix: "B" },
+        { threshold: 1_000_000, suffix: "M" },
+        { threshold: 1_000, suffix: "K" },
+      ] as const)
+    : ([
+        { threshold: 1_000_000_000, suffix: "Tỷ" },
+        { threshold: 1_000_000, suffix: "Tr" },
+        { threshold: 1_000, suffix: "K" },
+      ] as const);
   const unit = units.find(({ threshold }) => safeValue >= threshold);
+  const locale = isEn ? "en-US" : "vi-VN";
 
-  if (!unit) return Math.round(safeValue).toLocaleString("vi-VN");
+  if (!unit) return Math.round(safeValue).toLocaleString(locale);
 
   const scaled = safeValue / unit.threshold;
   const digits = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
-  return `${scaled.toLocaleString("vi-VN", { maximumFractionDigits: digits })}${unit.suffix}`;
+  return `${scaled.toLocaleString(locale, { maximumFractionDigits: digits })}${unit.suffix}`;
 }
 
-function formatCurrency(value: number, suffix: string): string {
-  return `${compactNumber(value)}${suffix}`;
+function formatCurrency(value: number, suffix: string, isEn: boolean): string {
+  return `${compactNumber(value, isEn)}${suffix}`;
 }
 
 function formatCooldown(remainingMs: number): string {
@@ -123,13 +131,21 @@ export function DockHud({
   className,
   currencySuffix = "đ",
 }: DockHudProps) {
+  const { t, i18n } = useTranslation();
+  const isEn = (i18n.resolvedLanguage || i18n.language || "en").startsWith("en");
   const giftReady = Math.max(0, giftRemainingMs) <= 0;
   const safeHooksLevel = Math.round(Math.max(0, hooksLevel));
+
+  const upgradeLabels: Record<DockUpgradeId, string> = {
+    capacity: t("dock.capacity"),
+    depth: t("dock.depth"),
+    offlineRate: t("dock.offlineRate"),
+  };
 
   return (
     <section
       className={`fishing-dock-hud ${interactionLocked ? "is-locked" : ""} ${className || ""}`}
-      aria-label="Bến câu cá"
+      aria-label={t("dock.dockAria")}
       aria-busy={interactionLocked}
     >
       {/* Top Left Settings Button — Square with rounded corners (rounded-2xl) */}
@@ -138,17 +154,17 @@ export function DockHud({
         type="button"
         onClick={onOpenSettings}
         disabled={interactionLocked}
-        aria-label="Mở cài đặt"
-        title="Cài đặt"
+        aria-label={t("dock.openSettings")}
+        title={t("settings.title")}
       >
         <Settings aria-hidden="true" strokeWidth={3} />
       </button>
 
       {/* Top Center Earnings Display */}
       <div className="fishing-dock-hud__earnings" aria-live="polite">
-        <span className="fishing-dock-hud__eyebrow">THU NHẬP</span>
+        <span className="fishing-dock-hud__eyebrow">{t("dock.earnings")}</span>
         <strong className="fishing-dock-hud__earnings-value">
-          {formatCurrency(earnings, currencySuffix)}
+          {formatCurrency(earnings, currencySuffix, isEn)}
         </strong>
       </div>
 
@@ -159,28 +175,28 @@ export function DockHud({
           type="button"
           onClick={onOpenLeaderboard}
           disabled={interactionLocked}
-          aria-label={`Kỷ lục: ${compactNumber(bestScore)}. Mở bảng xếp hạng`}
-          title="Bảng xếp hạng"
+          aria-label={t("dock.openLeaderboard", { score: compactNumber(bestScore, isEn) })}
+          title={t("dock.leaderboardTitle")}
         >
           <Trophy aria-hidden="true" strokeWidth={2.8} />
-          <strong>{compactNumber(bestScore)}</strong>
-          <span className="fishing-dock-hud__best-badge">KỶ LỤC</span>
+          <strong>{compactNumber(bestScore, isEn)}</strong>
+          <span className="fishing-dock-hud__best-badge">{t("dock.bestScore")}</span>
         </button>
       )}
 
       {/* Left Rail Menu Buttons — Pill/Rectangular Buttons with overlay animations */}
-      <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--left" aria-label="Đồ nghề và quà">
+      <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--left" aria-label={t("dock.gearAndGifts")}>
         <button
           className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
           type="button"
           onClick={onOpenHooks}
           disabled={interactionLocked}
-          aria-label={`Mở lưỡi câu, cấp ${safeHooksLevel}`}
-          title="Lưỡi câu"
+          aria-label={t("dock.openHooks", { level: safeHooksLevel })}
+          title={t("dock.hooks")}
         >
           <Anchor aria-hidden="true" strokeWidth={2.8} />
-          <span>LƯỠI CÂU</span>
-          <small>Cấp {safeHooksLevel}</small>
+          <span>{t("dock.hooks")}</span>
+          <small>{t("dock.level", { val: safeHooksLevel })}</small>
         </button>
 
         <button
@@ -190,35 +206,35 @@ export function DockHud({
           type="button"
           onClick={onClaimGift}
           disabled={interactionLocked}
-          aria-label={giftReady ? "Mở bảng quà tặng ngẫu nhiên" : `Bảng quà tặng - mở quà sau ${formatCooldown(giftRemainingMs)}`}
-          title="Quà tặng"
+          aria-label={giftReady ? t("dock.giftModalOpen") : t("dock.giftModalCountdown", { cooldown: formatCooldown(giftRemainingMs) })}
+          title={t("dock.gift")}
         >
           <Gift aria-hidden="true" strokeWidth={2.8} />
-          <span>{giftReady ? "NHẬN QUÀ" : "QUÀ TẶNG"}</span>
-          <small>{giftReady ? "Sẵn sàng" : formatCooldown(giftRemainingMs)}</small>
+          <span>{giftReady ? t("dock.claimGift") : t("dock.gift")}</span>
+          <small>{giftReady ? t("dock.ready") : formatCooldown(giftRemainingMs)}</small>
         </button>
       </nav>
 
       {/* Right Rail Menu Buttons */}
-      <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--right" aria-label="Thủy cung">
+      <nav className="fishing-dock-hud__rail fishing-dock-hud__rail--right" aria-label={t("dock.aquarium")}>
         <button
           className="fishing-dock-hud__rail-button fishing-dock-hud__pressable"
           type="button"
           onClick={onOpenAquarium}
           disabled={interactionLocked}
-          aria-label="Mở Thủy cung"
-          title="Thủy cung"
+          aria-label={t("dock.openAquarium")}
+          title={t("dock.aquarium")}
         >
           <Fish aria-hidden="true" strokeWidth={2.8} />
-          <span>THỦY CUNG</span>
-          <small>Bộ sưu tập</small>
+          <span>{t("dock.aquarium")}</span>
+          <small>{t("dock.collection")}</small>
         </button>
       </nav>
 
       {/* Bottom Upgrade Panel — 3 Dual-style Cards with GSAP floating arrows */}
       <div
         className="fishing-dock-hud__upgrades"
-        aria-label="Nâng cấp nhanh"
+        aria-label={t("dock.quickUpgrades")}
         data-dock-anchor="upgrades"
       >
         {UPGRADE_ORDER.map((upgradeId) => {
@@ -231,8 +247,8 @@ export function DockHud({
           const unavailable = interactionLocked || Boolean(upgrade.disabled) || maxed || !upgrade.affordable;
 
           const priceLabel = maxed
-            ? "MAX"
-            : formatCurrency(upgrade.cost ?? 0, currencySuffix);
+            ? t("dock.max")
+            : formatCurrency(upgrade.cost ?? 0, currencySuffix, isEn);
 
           return (
             <button
@@ -249,12 +265,12 @@ export function DockHud({
 
               {/* White Upper Card Section */}
               <span className="fishing-dock-hud__upgrade-heading">
-                <span>{meta.label}</span>
+                <span>{upgradeLabels[upgradeId]}</span>
               </span>
 
               <div className="fishing-dock-hud__upgrade-body">
                 {meta.renderIcon()}
-                <strong className="fishing-dock-hud__upgrade-value">Cấp {upgrade.value}</strong>
+                <strong className="fishing-dock-hud__upgrade-value">{t("dock.level", { val: upgrade.value })}</strong>
               </div>
 
               {/* Bottom Price Pill Section */}
