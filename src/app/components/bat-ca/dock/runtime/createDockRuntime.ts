@@ -420,11 +420,17 @@ export async function createDockRuntime(
       floatingTextList.push({ root, label, y, alpha: 1, age: 0, life: 1.2 });
     };
 
+    let cachedBounds = app.canvas.getBoundingClientRect();
+    const handleResizeBounds = () => {
+      cachedBounds = app.canvas.getBoundingClientRect();
+    };
+    window.addEventListener("resize", handleResizeBounds);
+
     const handlePointerMoveListener = (e: PointerEvent) => {
       if (signal.canceled || destroyed) return;
       if (state.fishingState !== "descending" && state.fishingState !== "ascending") return;
       
-      const bounds = app.canvas.getBoundingClientRect();
+      const bounds = cachedBounds;
       const pointerX = (e.clientX - bounds.left) * (app.canvas.width / bounds.width);
       const halfChannel = activeLayout.channelWidth / 2;
       
@@ -435,6 +441,7 @@ export async function createDockRuntime(
     };
     window.addEventListener("pointermove", handlePointerMoveListener);
     removePointerMoveListener = () => {
+      window.removeEventListener("resize", handleResizeBounds);
       window.removeEventListener("pointermove", handlePointerMoveListener);
     };
     cleanupSceneResources = () => {
@@ -473,8 +480,8 @@ export async function createDockRuntime(
     let lastReportedState: FishingState | null = null;
     let lastReportedCaughtCount = -1;
     let lastReportedRunEarnings = -1;
+    let lastReportedDepthMeters = -1;
 
-    app.ticker.maxFPS = 60;
     app.ticker.minFPS = 10;
 
     if (!tickerAdded) {
@@ -670,6 +677,12 @@ export async function createDockRuntime(
             }),
           );
 
+          const viewTop = state.cameraY - 150;
+          const viewBottom = state.cameraY + activeLayout.height + 150;
+          for (const fish of activeFishList) {
+            fish.node.visible = fish.isCaught || (fish.depthY >= viewTop && fish.depthY <= viewBottom);
+          }
+
           for (let i = floatingTextList.length - 1; i >= 0; i--) {
             const item = floatingTextList[i];
             item.age += dt;
@@ -684,7 +697,12 @@ export async function createDockRuntime(
 
 
           // --- 2. RENDER PHASE ---
-          updateWaterSurface({ rearWave, frontWave }, activeLayout, elapsed);
+          const isWaterVisible = state.cameraY <= activeLayout.waterlineY + 150;
+          rearWave.visible = isWaterVisible;
+          frontWave.visible = isWaterVisible;
+          if (isWaterVisible) {
+            updateWaterSurface({ rearWave, frontWave }, activeLayout, elapsed);
+          }
           const boatWaveMotion = sampleBoatWaveMotion(activeLayout.boatAnchor.x, elapsed);
 
           updateCharacterAnimation(
@@ -765,7 +783,10 @@ export async function createDockRuntime(
           const catchChanged = caughtFishList.length !== lastReportedCaughtCount;
           const earningsChanged = currentRunEarnings !== lastReportedRunEarnings;
 
-          if (stateChanged || catchChanged || earningsChanged || stateReportElapsed >= 0.1) {
+          const depthMetersRounded = Math.round(depthMeters);
+          const depthChanged = depthMetersRounded !== lastReportedDepthMeters;
+
+          if (stateChanged || catchChanged || earningsChanged || depthChanged) {
             try {
               callbacks.stateChangeRef.current?.(
                 state.fishingState, depthMeters, Math.round(state.targetDepthMeters), state.maxCapacityCount, caughtFishList.length, currentRunEarnings
@@ -777,6 +798,7 @@ export async function createDockRuntime(
             lastReportedState = state.fishingState;
             lastReportedCaughtCount = caughtFishList.length;
             lastReportedRunEarnings = currentRunEarnings;
+            lastReportedDepthMeters = depthMetersRounded;
           }
         } catch (error) {
           onFail(error, "ticker");

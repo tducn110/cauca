@@ -479,7 +479,7 @@ function createRainbowEffect(
 
       if (labelColorIndex !== colorIndex2) {
         labelColorIndex = colorIndex2;
-        label.style.fill = colors[colorIndex2];
+        label.tint = colors[colorIndex2];
       }
 
       for (let i = 0; i < sparkles.length; i += 1) {

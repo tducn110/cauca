@@ -180,14 +180,22 @@ class GameAudioManager {
     });
   }
 
+  private fallbackContext: typeof AudioContext.prototype | null = null;
+
   private playFallbackTone(cue: AudioCue): void {
     // No extra asset is needed for these secondary feedback cues.
     if (typeof window === "undefined") return;
-    const audioWindow = window as typeof window & { webkitAudioContext?: typeof AudioContext };
-    const AudioContextCtor = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
-    if (!AudioContextCtor) return;
-    const context = new AudioContextCtor();
-    if (!context) return;
+    if (!this.fallbackContext || this.fallbackContext.state === "closed") {
+      const audioWindow = window as typeof window & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextCtor = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
+      if (!AudioContextCtor) return;
+      this.fallbackContext = new AudioContextCtor();
+    }
+    const context = this.fallbackContext;
+    if (context.state === "suspended") {
+      context.resume().catch(() => {});
+    }
+    
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     const frequency = cue === "fail" ? 180 : cue === "boom" ? 90 : cue === "level" ? 680 : cue === "buy" ? 520 : 620;
@@ -199,7 +207,6 @@ class GameAudioManager {
     oscillator.connect(gain).connect(context.destination);
     oscillator.start();
     oscillator.stop(context.currentTime + 0.14);
-    oscillator.addEventListener("ended", () => void context.close());
   }
 }
 

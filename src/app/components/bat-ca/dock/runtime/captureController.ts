@@ -107,7 +107,7 @@ export function tickCaptureState(
     const slow = Math.min(1, remaining / 100); // 1 far away, → ~0 at the bottom
     const plungeSpeed = baseSpeed * (0.85 + state.castPowerFactor * 0.3) * (0.2 + 0.8 * slow);
     state.capturePointY = Math.min(plankBottomY, state.capturePointY + plungeSpeed * dt);
-    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
+    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 20, dt);
 
     if (state.capturePointY >= plankBottomY) {
       // Reached the bottom: settle X/camera and hold briefly before reversing,
@@ -134,7 +134,7 @@ export function tickCaptureState(
     const atCapacity = caughtFishList.length >= state.maxCapacityCount;
     const reelSpeed = (220 + (atCapacity ? 100 : 0)) * state.hookSpeedMultiplier;
     state.capturePointY -= reelSpeed * dt;
-    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 5, dt);
+    state.capturePointX = expoStep(state.capturePointX, state.targetCaptureX, 20, dt);
 
     const targetCamY = Math.max(0, state.capturePointY - layout.height * 0.45);
     state.cameraY = expoStep(state.cameraY, targetCamY, 8, dt);
