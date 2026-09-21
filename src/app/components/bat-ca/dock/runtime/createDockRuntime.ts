@@ -420,9 +420,15 @@ export async function createDockRuntime(
       floatingTextList.push({ root, label, y, alpha: 1, age: 0, life: 1.2 });
     };
 
-    let cachedBounds = app.canvas.getBoundingClientRect();
+    const getCanvasBounds = () => {
+      if (typeof app.canvas?.getBoundingClientRect === "function") {
+        return app.canvas.getBoundingClientRect();
+      }
+      return { left: 0, top: 0, width: app.screen?.width || 1, height: app.screen?.height || 1 };
+    };
+    let cachedBounds = getCanvasBounds();
     const handleResizeBounds = () => {
-      cachedBounds = app.canvas.getBoundingClientRect();
+      cachedBounds = getCanvasBounds();
     };
     window.addEventListener("resize", handleResizeBounds);
 

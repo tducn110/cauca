@@ -2,7 +2,6 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 export const LANGUAGE_STORAGE_KEY = "07-cauca-language";
-const LEGACY_STORAGE_KEYS = ["fruit-slashing-language"];
 
 export let isOnlineSession = false;
 export const setOnlineSession = (online: boolean): void => {
@@ -19,19 +18,15 @@ export const getInitialLanguage = (): SupportedLanguage => {
   try {
     const value = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (isSupportedLanguage(value)) return value;
-    for (const legacyKey of LEGACY_STORAGE_KEYS) {
-      const legacyValue = window.localStorage.getItem(legacyKey);
-      if (isSupportedLanguage(legacyValue)) {
-        try {
-          window.localStorage.setItem(LANGUAGE_STORAGE_KEY, legacyValue);
-        } catch {}
-        return legacyValue;
-      }
-    }
   } catch {
     // Storage read failure fallback
   }
   return DEFAULT_LANGUAGE;
+};
+
+export const formatNumber = (value: number, lang?: string): string => {
+  const current = lang || i18n.resolvedLanguage || i18n.language || "en";
+  return value.toLocaleString(current.startsWith("vi") ? "vi-VN" : "en-US");
 };
 
 export const persistLanguage = (language: string): void => {
@@ -324,7 +319,7 @@ void i18n
   .init({
     resources,
     lng: initialLanguage,
-    supportedLngs: ["vi", "en"],
+    supportedLngs: ["en", "vi"],
     fallbackLng: DEFAULT_LANGUAGE,
     interpolation: { escapeValue: false },
   });
