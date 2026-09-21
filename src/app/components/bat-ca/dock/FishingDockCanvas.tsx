@@ -1,11 +1,9 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { PowerLockResult } from "./FishingPowerGauge";
-import { FISHING_DOCK_ASSETS } from "./fishingAnimation";
 import { reportRuntimeError } from "../../../observability/runtimeErrors";
 import type { DockViewportLayout } from "./dockLayout";
 import { createDockRuntime, type DockSceneRuntimeInstance } from "./runtime/createDockRuntime";
-import { DOCK_DEBUG } from "./runtime/runtimeDebug";
 import "./fishing-dock-scene.css";
 
 export type FishingState = "idle" | "casting" | "descending" | "ascending" | "surfaceBurst" | "payout";
@@ -25,6 +23,7 @@ type Props = {
   onPowerLock?: (result: PowerLockResult) => void;
   onCatchComplete: (summary: CatchSummary) => void;
   onStateChange?: (state: FishingState, depthMeters: number, maxDepthMeters: number, capacity: number, caughtCount: number, runEarnings: number) => void;
+  onSceneReady?: () => void;
   onSceneError?: (message: string) => void;
   disabled?: boolean;
 };
@@ -38,6 +37,7 @@ export function FishingDockCanvas({
   onPowerLock,
   onCatchComplete,
   onStateChange,
+  onSceneReady,
   onSceneError,
   disabled = false,
 }: Props) {
@@ -48,6 +48,7 @@ export function FishingDockCanvas({
   const callbackRef = useRef(onPowerLock);
   const catchCompleteRef = useRef(onCatchComplete);
   const stateChangeRef = useRef(onStateChange);
+  const sceneReadyRef = useRef(onSceneReady);
   const sceneErrorRef = useRef(onSceneError);
   const disabledRef = useRef(disabled);
   const pausedRef = useRef(paused);
@@ -59,6 +60,7 @@ export function FishingDockCanvas({
   callbackRef.current = onPowerLock;
   catchCompleteRef.current = onCatchComplete;
   stateChangeRef.current = onStateChange;
+  sceneReadyRef.current = onSceneReady;
   sceneErrorRef.current = onSceneError;
   disabledRef.current = disabled;
   pausedRef.current = paused;
@@ -87,6 +89,7 @@ export function FishingDockCanvas({
     if (!host) return;
 
     let sceneFailed = false;
+    let readyFrame = 0;
     const notifySceneError = (message: string) => {
       try {
         sceneErrorRef.current?.(message);
@@ -133,6 +136,13 @@ export function FishingDockCanvas({
             depthLevelRef.current,
             selectedHookIdRef.current,
           );
+          // The document loader may reveal this surface only after Pixi has had
+          // a complete frame to paint; React never renders a visual preview.
+          readyFrame = window.requestAnimationFrame(() => {
+            readyFrame = window.requestAnimationFrame(() => {
+              if (!signal.canceled && !sceneFailed) sceneReadyRef.current?.();
+            });
+          });
         }
       })
       .catch(err => {
@@ -141,6 +151,7 @@ export function FishingDockCanvas({
 
     return () => {
       signal.canceled = true;
+      window.cancelAnimationFrame(readyFrame);
       if (localRuntime) {
         localRuntime.destroy();
       }
@@ -155,23 +166,7 @@ export function FishingDockCanvas({
 
   return (
     <div className="fishing-dock-canvas" ref={hostRef}>
-      <div className="fishing-dock-canvas__fallback" aria-hidden="true">
-        <img className="fishing-dock-canvas__background" src={FISHING_DOCK_ASSETS.background} alt="" />
-        <div className="fishing-dock-canvas__water">
-          <span className="fishing-dock-canvas__channel" />
-        </div>
-        <div className="fishing-dock-canvas__rear-wave" />
-        <div className="fishing-dock-canvas__sparkles">
-          {Array.from({ length: 6 }, (_, index) => <span key={index} />)}
-        </div>
-        <img className="fishing-dock-canvas__character" src={FISHING_DOCK_ASSETS.frames[0]} alt="" />
-        <div className="fishing-dock-canvas__front-wave" />
-        {DOCK_DEBUG && <div className="fishing-dock-canvas__fallback-guide" />}
-        <div className="fishing-dock-canvas__fallback-gauge">
-          <img src={FISHING_DOCK_ASSETS.dial} alt="" />
-          <img className="fishing-dock-canvas__fallback-pointer" src={FISHING_DOCK_ASSETS.pointer} alt="" />
-        </div>
-      </div>
+      {/* Input/accessibility proxy only; the gauge visual belongs to Pixi. */}
       <button
         type="button"
         className="fishing-dock-canvas__gauge-button"

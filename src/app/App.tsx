@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAppShell } from "./hooks/useAppShell";
 import { GameApp } from "./GameApp";
 import { preloadCriticalResources, preloadNonCriticalResources } from "../utils/game-loader";
@@ -6,7 +6,11 @@ import { completeGameLoading, onGameLoadingDismiss, setGameLoadingProgress } fro
 
 
 export default function App() {
-  // Unified PapaStudio loading screen lifecycle barrier
+  const [bootstrapReady, setBootstrapReady] = useState(false);
+  const [initialSceneSettled, setInitialSceneSettled] = useState(false);
+
+  // The document loader owns boot presentation. It waits for browser resources
+  // and the initial Pixi scene, rather than exposing an unfinished stage.
   useEffect(() => {
     setGameLoadingProgress(25);
     const criticalPromise = preloadCriticalResources((pct) => {
@@ -21,15 +25,21 @@ export default function App() {
       };
       check();
     });
-    void Promise.allSettled([criticalPromise, winkPromise]).then(() => {
-      completeGameLoading();
-    });
+    void Promise.allSettled([criticalPromise, winkPromise]).then(() => setBootstrapReady(true));
     const unbind = onGameLoadingDismiss(() => {
       preloadNonCriticalResources();
     });
     return unbind;
   }, []);
 
+  useEffect(() => {
+    if (bootstrapReady && initialSceneSettled) completeGameLoading();
+  }, [bootstrapReady, initialSceneSettled]);
+
+  const handleInitialSceneSettled = useCallback(() => {
+    setInitialSceneSettled(true);
+  }, []);
+
   const shell = useAppShell();
-  return <GameApp {...shell} />;
+  return <GameApp {...shell} onInitialSceneSettled={handleInitialSceneSettled} />;
 }

@@ -15,6 +15,7 @@ interface Props {
   onShowLeaderboard?: () => void;
   onStartRound?: () => WinkRound;
   onCatchCompleteScore?: (summary: CatchSummary) => void;
+  onInitialSceneSettled?: () => void;
 }
 
 export function HomeScreen({
@@ -28,6 +29,7 @@ export function HomeScreen({
   onShowLeaderboard,
   onStartRound,
   onCatchCompleteScore,
+  onInitialSceneSettled,
 }: Props) {
   return (
     <div className="min-h-screen min-h-[100dvh] overflow-hidden bg-[#176ff3]">
@@ -39,6 +41,7 @@ export function HomeScreen({
         onShowLeaderboard={onShowLeaderboard}
         onStartRound={onStartRound}
         onCatchCompleteScore={onCatchCompleteScore}
+        onInitialSceneSettled={onInitialSceneSettled}
       />
       <DashboardPanel
         open={showDashboard}

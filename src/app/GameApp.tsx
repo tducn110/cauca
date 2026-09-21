@@ -28,6 +28,7 @@ interface Props {
   handleBackFromLeaderboard: () => void;
   handleStartRound?: () => WinkRound;
   handleCatchScore?: (summary: CatchSummary) => Promise<void>;
+  onInitialSceneSettled?: () => void;
 }
 
 export function GameApp({
@@ -45,6 +46,7 @@ export function GameApp({
   handleBackFromLeaderboard,
   handleStartRound,
   handleCatchScore,
+  onInitialSceneSettled,
 }: Props) {
   if (screen === "leaderboard") {
     const winkLeaderboard = leaderboard.map((entry) => ({
@@ -80,6 +82,7 @@ export function GameApp({
       onShowLeaderboard={handleShowLeaderboard}
       onStartRound={handleStartRound}
       onCatchCompleteScore={handleCatchScore}
+      onInitialSceneSettled={onInitialSceneSettled}
     />
   );
 }

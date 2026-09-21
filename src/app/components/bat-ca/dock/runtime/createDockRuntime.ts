@@ -431,7 +431,9 @@ export async function createDockRuntime(
       if (state.fishingState !== "descending" && state.fishingState !== "ascending") return;
       
       const bounds = cachedBounds;
-      const pointerX = (e.clientX - bounds.left) * (app.canvas.width / bounds.width);
+      // Canvas backing storage is DPR-scaled; scene positions use CSS pixels.
+      // Map through the shared layout contract to keep mobile input aligned.
+      const pointerX = (e.clientX - bounds.left) * (activeLayout.width / bounds.width);
       const halfChannel = activeLayout.channelWidth / 2;
       
       state.targetCaptureX = Math.max(

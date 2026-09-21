@@ -42,6 +42,7 @@ type Props = {
   onShowLeaderboard?: () => void;
   onStartRound?: () => WinkRound;
   onCatchCompleteScore?: (summary: CatchSummary) => void;
+  onInitialSceneSettled?: () => void;
 };
 
 function readSafeAreaInsets(element: HTMLElement): DockSafeAreaInsets {
@@ -67,6 +68,7 @@ export function FishingDockScreen({
   onShowLeaderboard,
   onStartRound,
   onCatchCompleteScore,
+  onInitialSceneSettled,
 }: Props) {
   const { t, i18n } = useTranslation();
   const locale = (i18n.resolvedLanguage || i18n.language).startsWith("en") ? "en-US" : "vi-VN";
@@ -331,7 +333,11 @@ export function FishingDockScreen({
         onPowerLock={lockPower}
         onCatchComplete={handleCatchComplete}
         onStateChange={handleStateChange}
-        onSceneError={(message) => setSceneError(message)}
+        onSceneReady={onInitialSceneSettled}
+        onSceneError={(message) => {
+          setSceneError(message);
+          onInitialSceneSettled?.();
+        }}
         disabled={isInteractionLocked}
       />
 
