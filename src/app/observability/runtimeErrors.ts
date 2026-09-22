@@ -33,7 +33,7 @@ export function reportRuntimeError(
     });
   }
 
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
     window.dispatchEvent(new CustomEvent("batca:runtime-error", {
       detail: {
         area: context.area,

@@ -13,6 +13,9 @@ interface Props {
 
 export function HooksPanel({ onClose, onNotice }: Props) {
   const { t, i18n } = useTranslation();
+  const isVi = (i18n.resolvedLanguage || i18n.language || "").startsWith("vi");
+  const locale = isVi ? "vi-VN" : "en-US";
+  const currencySuffix = isVi ? "đ" : "";
   const [save, setSave] = useState(() => loadSave());
 
   const handleSelect = (hookId: string) => {
@@ -59,7 +62,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
           {/* Coin Badge */}
           <div className="absolute top-1/2 -translate-y-1/2 left-4 px-3 py-1.5 rounded-full bg-yellow-100 border border-yellow-400 border-b-[2px] text-black font-black flex items-center gap-1.5 text-xs sm:text-sm">
             <span className="text-amber-500"><Coins size={16} strokeWidth={3} /></span>
-            <span>{save.money.toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}</span>
+            <span>{save.money.toLocaleString(locale)}</span>
           </div>
 
           <h2 id="hooks-panel-title" className="text-xl sm:text-2xl font-black text-black m-0 uppercase tracking-wide">
@@ -193,9 +196,9 @@ export function HooksPanel({ onClose, onNotice }: Props) {
             <Coins size={20} strokeWidth={2.5} />
             <span>
               {allUnlocked 
-                ? t("dock.allUnlocked", "Đã mở khóa toàn bộ") 
-                : t("dock.randomUnlock", `Mở khóa ngẫu nhiên (${currentUnlockPrice.toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}${i18n.language === "vi" ? "đ" : ""})`, {
-                    price: `${currentUnlockPrice.toLocaleString(i18n.language === "vi" ? "vi-VN" : "en-US")}${i18n.language === "vi" ? "đ" : ""}`
+                ? t("dock.allUnlocked") 
+                : t("dock.randomUnlock", {
+                    price: `${currentUnlockPrice.toLocaleString(locale)}${currencySuffix}`,
                   })
               }
             </span>

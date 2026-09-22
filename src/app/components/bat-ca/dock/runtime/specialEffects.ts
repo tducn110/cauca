@@ -19,6 +19,14 @@ function createNoopEffect(): SpecialEffectController {
   };
 }
 
+function addChildBack(parent: Container, child: any): void {
+  if (typeof parent.addChildAt === "function") {
+    parent.addChildAt(child, 0);
+  } else {
+    parent.addChild(child);
+  }
+}
+
 function resetBodyGraphic(bodyGraphic: Graphics): void {
   if (bodyGraphic.destroyed) return;
   bodyGraphic.position.set(0, 0);
@@ -34,7 +42,9 @@ function destroyOwnedNodes(nodes: readonly OwnedNode[]): void {
     if (node.destroyed) continue;
 
     try {
-      node.removeFromParent();
+      if (typeof (node as any).removeFromParent === "function") {
+        (node as any).removeFromParent();
+      }
     } catch (error) {
       if (!hasError) {
         firstError = error;
@@ -137,7 +147,7 @@ function createGoldenEffect(
 ): SpecialEffectController {
   let isDestroyed = false;
   const halo = new Graphics().circle(0, 0, kind.size * 1.5).fill({ color: 0xffe066, alpha: 0 });
-  parent.addChildAt(halo, 0);
+  addChildBack(parent, halo);
 
   const sparkles: Graphics[] = [];
   for (let i = 0; i < 3; i += 1) {
@@ -238,7 +248,7 @@ function createElectricEffect(
 ): SpecialEffectController {
   let isDestroyed = false;
   const halo = new Graphics().circle(0, 0, kind.size * 1.5).fill({ color: 0x0ea5e9, alpha: 0.2 });
-  parent.addChildAt(halo, 0);
+  addChildBack(parent, halo);
 
   const arcs: Graphics[] = [];
   for (let i = 0; i < 3; i += 1) {
@@ -342,14 +352,14 @@ function createGhostEffect(
 ): SpecialEffectController {
   let isDestroyed = false;
   const halo = new Graphics().circle(0, 0, kind.size * 1.5).fill({ color: 0xc084fc, alpha: 0.25 });
-  parent.addChildAt(halo, 0);
+  addChildBack(parent, halo);
 
   const afterimages: Graphics[] = [];
   for (let i = 0; i < 2; i += 1) {
     const afterimage = new Graphics();
     drawFishShape(afterimage, kind, kind.size);
     afterimage.tint = 0xc084fc;
-    parent.addChildAt(afterimage, 0);
+    addChildBack(parent, afterimage);
     afterimages.push(afterimage);
   }
 
@@ -436,7 +446,7 @@ function createRainbowEffect(
   let isDestroyed = false;
   const halo = new Graphics().circle(0, 0, kind.size * 1.6).fill({ color: 0xffffff, alpha: 1 });
   halo.blendMode = "add";
-  parent.addChildAt(halo, 0);
+  addChildBack(parent, halo);
 
   const sparkles: Graphics[] = [];
   for (let i = 0; i < 3; i += 1) {

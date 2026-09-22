@@ -146,7 +146,7 @@ interface Props {
 
 export function GiftModal({ onClose, onNotice, onClaimReward, giftRemainingMs, wallet }: Props) {
   const { t, i18n } = useTranslation();
-  const locale = (i18n.resolvedLanguage || i18n.language).startsWith("en") ? "en-US" : "vi-VN";
+  const locale = (i18n.resolvedLanguage || i18n.language || "").startsWith("vi") ? "vi-VN" : "en-US";
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [winningIndex, setWinningIndex] = useState<number | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);

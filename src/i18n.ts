@@ -10,13 +10,17 @@ export const setOnlineSession = (online: boolean): void => {
 
 type SupportedLanguage = "vi" | "en";
 const DEFAULT_LANGUAGE: SupportedLanguage = "en";
-export const isSupportedLanguage = (value: string | null): value is SupportedLanguage =>
+export const isSupportedLanguage = (value: string | null | undefined): value is SupportedLanguage =>
   value === "vi" || value === "en";
 
 export const getInitialLanguage = (): SupportedLanguage => {
   if (typeof window === "undefined") return DEFAULT_LANGUAGE;
   try {
-    const value = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    const params = new URLSearchParams(window.location.search);
+    const urlLang = params.get("lang")?.toLowerCase().split("-")[0];
+    if (isSupportedLanguage(urlLang)) return urlLang;
+
+    const value = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)?.split("-")[0];
     if (isSupportedLanguage(value)) return value;
   } catch {
     // Storage read failure fallback

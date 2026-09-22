@@ -71,7 +71,7 @@ export function FishingDockScreen({
   onInitialSceneSettled,
 }: Props) {
   const { t, i18n } = useTranslation();
-  const locale = (i18n.resolvedLanguage || i18n.language).startsWith("en") ? "en-US" : "vi-VN";
+  const locale = (i18n.resolvedLanguage || i18n.language || "").startsWith("vi") ? "vi-VN" : "en-US";
   const progression = useDockProgression({ autoClaimOffline: false });
   const { claimOffline } = progression;
   const stageRef = useRef<HTMLElement>(null);

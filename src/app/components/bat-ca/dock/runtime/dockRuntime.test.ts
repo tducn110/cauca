@@ -27,9 +27,11 @@ vi.mock('pixi.js', () => {
     destroyed = false;
     destroy() { this.destroyed = true; }
     addChild() {}
+    removeFromParent() {}
   }
   class MockContainer {
     addChild() {}
+    addChildAt() {}
     destroy() {}
     position = { set: vi.fn() };
     x = 0; y = 0; rotation = 0; alpha = 1; scale = { set: vi.fn(), x: 1, y: 1 }; destroyed = false;
@@ -529,7 +531,7 @@ describe("ambientRenderer", () => {
 // ─────────────────────────────────────────────────────────
 describe("regression: texture lifecycle in Strict Mode", () => {
   it("destroy runtime does not destroy shared texture sources", async () => {
-    (globalThis as any).window = { devicePixelRatio: 1, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    (globalThis as any).window = { devicePixelRatio: 1, addEventListener: vi.fn(), removeEventListener: vi.fn(), dispatchEvent: vi.fn() };
     
     let appDestroyOptions: any = null;
     vi.mocked(Application).mockImplementationOnce(function (this: any) {

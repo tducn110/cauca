@@ -1,6 +1,4 @@
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { Anchor, ArrowUp, Fish, Gift, Settings, Trophy } from "lucide-react";
+import { Anchor, Fish, Gift, Settings, Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { DockUpgradeType } from "./progression";
@@ -88,33 +86,6 @@ function formatCooldown(remainingMs: number): string {
   return [hours, minutes, seconds].map((unit) => String(unit).padStart(2, "0")).join(":");
 }
 
-// Custom hook component for floating arrow animation via GSAP
-function FloatingUpgradeArrow({ active }: { active: boolean }) {
-  const arrowRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (!active || !arrowRef.current) return;
-    const tween = gsap.to(arrowRef.current, {
-      y: -7,
-      repeat: -1,
-      yoyo: true,
-      duration: 0.55,
-      ease: "sine.inOut",
-    });
-    return () => {
-      tween.kill();
-    };
-  }, [active]);
-
-  if (!active) return null;
-
-  return (
-    <span ref={arrowRef} className="fishing-dock-hud__upgrade-arrow" aria-hidden="true">
-      <ArrowUp className="fishing-dock-hud__upgrade-arrow-img" strokeWidth={3.2} />
-    </span>
-  );
-}
-
 export function DockHud({
   earnings,
   bestScore = 0,
@@ -132,7 +103,8 @@ export function DockHud({
   currencySuffix = "đ",
 }: DockHudProps) {
   const { t, i18n } = useTranslation();
-  const isEn = (i18n.resolvedLanguage || i18n.language || "en").startsWith("en");
+  // ponytail: strictly fallback to en unless explicitly vi
+  const isEn = !(i18n.resolvedLanguage || i18n.language || "").startsWith("vi");
   const giftReady = Math.max(0, giftRemainingMs) <= 0;
   const safeHooksLevel = Math.round(Math.max(0, hooksLevel));
 
@@ -243,7 +215,6 @@ export function DockHud({
           const safeLevel = Math.round(Math.max(0, upgrade.level));
           const safeMaxLevel = Math.max(1, Math.round(Math.max(0, upgrade.maxLevel)));
           const maxed = upgrade.cost === null || safeLevel >= safeMaxLevel;
-          const showArrow = !maxed && upgrade.affordable && !interactionLocked && !upgrade.disabled;
           const unavailable = interactionLocked || Boolean(upgrade.disabled) || maxed || !upgrade.affordable;
 
           const priceLabel = maxed
@@ -260,9 +231,6 @@ export function DockHud({
               onClick={() => onBuyUpgrade(upgradeId)}
               disabled={unavailable}
             >
-              {/* GSAP Floating Upgrade Arrow */}
-              <FloatingUpgradeArrow active={showArrow} />
-
               {/* White Upper Card Section */}
               <span className="fishing-dock-hud__upgrade-heading">
                 <span>{upgradeLabels[upgradeId]}</span>

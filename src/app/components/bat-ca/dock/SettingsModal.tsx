@@ -14,7 +14,7 @@ interface Props {
 export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
   const [save, setSave] = useState(() => loadSave());
   const { t, i18n } = useTranslation();
-  const language = i18n.resolvedLanguage === "en" ? "en" : "vi";
+  const language = (i18n.resolvedLanguage || i18n.language || "").startsWith("vi") ? "vi" : "en";
   const targetLanguage = language === "vi" ? "en" : "vi";
 
   const handleToggleSound = () => {

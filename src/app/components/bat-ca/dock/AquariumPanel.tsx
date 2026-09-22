@@ -8,10 +8,9 @@ import "./fishing-dock-screen.css";
 interface Props {
   onClose: () => void;
 }
-
 export function AquariumPanel({ onClose }: Props) {
   const { t, i18n } = useTranslation();
-  const isEnglish = (i18n.resolvedLanguage || i18n.language).startsWith("en");
+  const isEnglish = !(i18n.resolvedLanguage || i18n.language || "").startsWith("vi");
   const [save] = useState(() => loadSave());
 
   const discoveredSet = new Set(save.discoveredFish);
