@@ -1,6 +1,7 @@
 import { X, Trophy, BarChart3 } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { gameAudio } from "../../audio/audioManager";
 
 interface Props {
   open: boolean;
@@ -35,7 +36,7 @@ export function DashboardPanel({ open, onClose, bestScore, lastScore }: Props) {
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => { gameAudio.play("click"); onClose(); }}
           className="game-btn-close absolute top-3.5 right-3.5"
           aria-label={t("dock.closeDashboard", "Đóng bảng thành tích")}
         >

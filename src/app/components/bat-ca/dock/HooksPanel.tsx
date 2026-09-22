@@ -69,7 +69,7 @@ export function HooksPanel({ onClose, onNotice }: Props) {
           <button
             type="button"
             className="absolute top-1/2 -translate-y-1/2 right-4 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center transition-all border border-slate-300 border-b-2 active:border-b active:translate-y-[2px]"
-            onClick={onClose}
+            onClick={() => { gameAudio.play("click"); onClose(); }}
             aria-label={t("common.close", "Đóng")}
           >
             <X size={20} strokeWidth={3.5} />

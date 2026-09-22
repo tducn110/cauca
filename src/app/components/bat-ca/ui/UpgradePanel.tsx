@@ -89,7 +89,7 @@ export function UpgradePanel({ game, money, onBuy, onClose }: {
             );
           })}
         </div>
-        <button className="batca-btn batca-btn-primary w-full" onClick={onClose}>
+        <button className="batca-btn batca-btn-primary w-full" onClick={() => { gameAudio.play("click"); onClose(); }}>
           {hasAffordableUpgrade ? "Tiếp tục câu" : "Không đủ tiền • Tiếp tục"}
         </button>
       </div>

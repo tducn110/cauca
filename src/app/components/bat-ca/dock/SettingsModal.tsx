@@ -18,6 +18,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
   const targetLanguage = language === "vi" ? "en" : "vi";
 
   const handleToggleSound = () => {
+    gameAudio.play("click");
     onToggleMute();
     const nextSound = muted; // if currently muted, turning sound on
     saveProgress({ audioSettings: { ...save.audioSettings, sound: nextSound } });
@@ -62,7 +63,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
             <button
               type="button"
               aria-label={t("settings.language") + ": " + targetLanguage.toUpperCase()}
-              onClick={() => void i18n.changeLanguage(targetLanguage)}
+              onClick={() => { gameAudio.play("click"); void i18n.changeLanguage(targetLanguage); }}
               className="w-[80px] py-2.5 rounded-xl font-black uppercase text-sm transition-all flex items-center justify-center border border-slate-300 border-b-[3px] bg-orange-500 text-white"
             >
               {targetLanguage.toUpperCase()}
@@ -120,7 +121,7 @@ export function SettingsModal({ muted, onToggleMute, onClose }: Props) {
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => { gameAudio.play("click"); onClose(); }}
             className="w-full mt-2 bg-yellow-400 text-black border-2 border-yellow-600 border-b-[3px] font-black text-xl py-3.5 rounded-[20px] uppercase tracking-wider transition-all active:border-b-[2px] active:translate-y-[2px]"
           >
             {t("common.back")}

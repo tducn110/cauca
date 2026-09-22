@@ -108,7 +108,7 @@ export function ShopPanel({ game, money, onBuy, onClose }: Props) {
                   <button
                     className="batca-upg-buy"
                     disabled={!canAfford}
-                    onClick={() => addToCart(def.type)}
+                    onClick={() => { gameAudio.play("click"); addToCart(def.type); }}
                   >
                     {def.cost}đ
                   </button>
@@ -132,7 +132,7 @@ export function ShopPanel({ game, money, onBuy, onClose }: Props) {
           >
             {pendingCost > 0 ? `Mua (${pendingCost}đ)` : "Chọn vật phẩm"}
           </button>
-          <button className="batca-btn batca-btn-ghost w-full" onClick={onClose}>
+          <button className="batca-btn batca-btn-ghost w-full" onClick={() => { gameAudio.play("click"); onClose(); }}>
             Đóng
           </button>
         </div>
