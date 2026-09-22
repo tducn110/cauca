@@ -134,49 +134,49 @@
     0 4px 0 rgba(48, 39, 79, 0.34);
 }
 
+/* ponytail: record compact 56×56 column-stack same as settings; aquarium aligned with hooks */
 .fishing-dock-hud__best {
   position: absolute;
   top: var(--dock-safe-top, 25px);
   right: var(--dock-safe-right, 20px);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  gap: 1px;
+  padding: 4px 0;
   border: 3px solid #ffffff;
-  border-radius: 18px;
+  border-radius: 16px;
   background: #ffffff;
   box-shadow: 0 5px 0 var(--dock-shadow), 0 10px 24px rgba(36, 55, 112, 0.16);
   line-height: 1;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .fishing-dock-hud__best > svg {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   color: #ecb800;
   flex: 0 0 auto;
   filter: drop-shadow(0 2px 0 rgba(137, 80, 0, 0.25));
 }
 
 .fishing-dock-hud__best strong {
-  font-size: clamp(16px, 1.4vw, 20px);
+  font-size: clamp(12px, 1.1vw, 15px);
   font-weight: 1000;
   color: var(--dock-ink);
 }
 
 .fishing-dock-hud__best-badge {
-  position: absolute;
-  top: -8px;
-  right: 12px;
-  padding: 2px 7px;
-  border-radius: 6px;
-  background: #ff6b00;
-  color: #ffffff;
-  font-size: 9px;
+  font-size: 7px;
   font-weight: 1000;
-  line-height: 1.15;
+  line-height: 1.1;
   text-transform: uppercase;
   white-space: nowrap;
+  color: var(--dock-muted);
 }
 
 .fishing-dock-hud__rail {
@@ -191,10 +191,11 @@
   left: 0;
 }
 
+/* ponytail: right rail aligned to same top as left rail (was +84px, now +72px) */
 .fishing-dock-hud__rail--right {
   right: 0;
   left: auto;
-  top: calc(var(--dock-safe-top, 25px) + 84px);
+  top: calc(var(--dock-safe-top, 25px) + 72px);
 }
 
 .fishing-dock-hud__rail-button {
@@ -268,6 +269,7 @@
   color: #736d86;
 }
 
+/* ponytail: width driven by layout var (flex to responsive); small gap 2-side padding from CSS var */
 .fishing-dock-hud__upgrades {
   position: absolute;
   top: var(--dock-upgrade-top, 486px);
@@ -275,7 +277,8 @@
   display: flex;
   justify-content: center;
   transform: translateX(-50%);
-  gap: 14px;
+  gap: var(--dock-upgrade-gap, 14px);
+  width: var(--dock-upgrade-width, auto);
 }
 
 .fishing-dock-hud__upgrade {
@@ -314,9 +317,10 @@
 }
 
 .fishing-dock-hud__upgrade-heading > span {
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 1000;
-  color: var(--dock-ink);
+  /* ponytail: orange per user spec */
+  color: var(--dock-orange);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -446,27 +450,22 @@
   }
 
   .fishing-dock-hud__best {
-    min-width: 100px;
-    min-height: 48px;
-    padding: 7px 9px 6px 34px;
+    width: 48px;
+    height: 48px;
     border-radius: 10px;
   }
 
   .fishing-dock-hud__best > svg {
-    left: 8px;
-    width: 21px;
-    height: 21px;
+    width: 18px;
+    height: 18px;
   }
 
   .fishing-dock-hud__best strong {
-    margin-top: 12px;
-    font-size: 16px;
+    font-size: 11px;
   }
 
   .fishing-dock-hud__best-badge {
-    top: 7px;
-    right: 9px;
-    font-size: 8px;
+    font-size: 6px;
   }
 
   .fishing-dock-hud__rail {
@@ -527,6 +526,12 @@
 
   .fishing-dock-hud__upgrade-value {
     font-size: clamp(13px, 3.8vw, 17px);
+  }
+
+  .fishing-dock-hud__upgrade-main-img {
+    /* ponytail: smaller icon so depth/value text has room */
+    width: 44px;
+    height: 44px;
   }
 
   .fishing-dock-hud__upgrade-level {

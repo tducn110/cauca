@@ -819,6 +819,16 @@ export async function createDockRuntime(
     app.canvas.dataset.sceneReady = "true";
     host.classList.add("is-scene-ready");
 
+    // ponytail: populate fish immediately on init — many kinds, visible before first cast
+    const ambientDepth = INITIAL_MAX_DEPTH + callbacks.depthLevelRef.current * DEPTH_UPGRADE_DELTA;
+    activeFishList = createFishPool({
+      targetDepthMeters: ambientDepth,
+      progressionLevel: Math.max(1, callbacks.depthLevelRef.current + 1),
+      layout: initialLayout,
+      fishKinds: FISH_KINDS,
+      fishContainer,
+    });
+
     const lockGauge = () => {
       if (!signal.canceled && !destroyed && !callbacks.disabledRef.current && gauge) {
         gauge.lock();

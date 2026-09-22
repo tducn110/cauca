@@ -168,7 +168,7 @@ export function DockHud({
         </strong>
       </div>
 
-      {/* Top Right Best Score / Leaderboard Button */}
+      {/* Top Right Best Score / Leaderboard Button — compact column same as settings */}
       {onOpenLeaderboard && (
         <button
           className="fishing-dock-hud__best fishing-dock-hud__pressable"

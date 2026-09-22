@@ -71,7 +71,7 @@ const resources = {
       dock: {
         capacity: "SỨC CHỨA",
         depth: "ĐỘ SÂU",
-        offlineRate: "THU NHẬP RẢNH",
+        offlineRate: "THU NHẬP",
         earnings: "THU NHẬP",
         bestScore: "KỶ LỤC",
         hooks: "LƯỠI CÂU",
@@ -202,7 +202,7 @@ const resources = {
       dock: {
         capacity: "CAPACITY",
         depth: "DEPTH",
-        offlineRate: "IDLE INCOME",
+        offlineRate: "INCOME",
         earnings: "EARNINGS",
         bestScore: "RECORD",
         hooks: "HOOKS",
